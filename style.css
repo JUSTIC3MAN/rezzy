@@ -1,0 +1,60 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#game-container {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    max-width: 100vw;
+    max-height: 100vh;
+    /* This ensures it scales to fit the screen while keeping 16:9 */
+    width: 100%;
+}
+
+/* If the screen is taller than 16:9, width hits 100vw.
+   If the screen is wider than 16:9, height hits 100vh and width adjusts. */
+@media (min-aspect-ratio: 16/9) {
+    #game-container {
+        width: auto;
+        height: 100vh;
+    }
+}
+
+#bg-video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+}
+
+#game-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    pointer-events: none;
+}
+
+#fg-video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 3;
+    pointer-events: none;
+}

@@ -1,0 +1,17 @@
+# Development dependencies and scripts
+node_modules/
+package.json
+package-lock.json
+
+# Scratch and analysis scripts
+scratch/
+bbox.js
+get_img_size.js
+grid_detect.js
+grid_detect2.js
+grid_detect3.js
+grid_detect4.js
+
+# OS generated files
+.DS_Store
+Thumbs.db
