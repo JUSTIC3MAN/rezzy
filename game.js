@@ -20,40 +20,40 @@ const grabImage = new Image();
 grabImage.src = 'RezzySpriteSheet/Grab_Rezzy.png';
 
 const fairyImage = new Image();
-fairyImage.src = 'items/FairyInBottle.png';
+fairyImage.src = 'Items/FairyInBottle.png';
 
 const thoughtBubbleImage = new Image();
-thoughtBubbleImage.src = 'items/thoughtbubble.png';
+thoughtBubbleImage.src = 'Items/thoughtbubble.png';
 
 const customersImage = new Image();
 customersImage.src = 'Customers/customers.png';
 
 const fairySpriteImage = new Image();
-fairySpriteImage.src = 'items/FairyInBottleSprite.png';
+fairySpriteImage.src = 'Items/FairyInBottleSprite.png';
 
 const lightningImage = new Image();
-lightningImage.src = 'items/BlueLightning.png';
+lightningImage.src = 'Items/BlueLightning.png';
 
 const lightningSpriteImage = new Image();
-lightningSpriteImage.src = 'items/BlueLightningSprite.png';
+lightningSpriteImage.src = 'Items/BlueLightningSprite.png';
 
 const lagoonSpriteImage = new Image();
-lagoonSpriteImage.src = 'items/MermaidLagoonSprite.png';
+lagoonSpriteImage.src = 'Items/MermaidLagoonSprite.png';
 
 const boomImage = new Image();
-boomImage.src = 'items/RedWhiteBoom.png';
+boomImage.src = 'Items/RedWhiteBoom.png';
 
 const boomSpriteImage = new Image();
-boomSpriteImage.src = 'items/RedWhiteBoomSprite.png';
+boomSpriteImage.src = 'Items/RedWhiteBoomSprite.png';
 
 const lagoonImage = new Image();
-lagoonImage.src = 'items/MermaidLagoon.png';
+lagoonImage.src = 'Items/MermaidLagoon.png';
 
 const progressBarImage = new Image();
-progressBarImage.src = 'items/progressbar.png';
+progressBarImage.src = 'Items/progressbar.png';
 
 const progressBarFilledImage = new Image();
-progressBarFilledImage.src = 'items/progressbarfilled.png';
+progressBarFilledImage.src = 'Items/progressbarfilled.png';
 
 let currentProgressBarFill = 0; // Current visual fill level (0 to 1)
 let totalCorrectOrders = 0; // Track total correct orders
