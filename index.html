@@ -2,11 +2,19 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Rezzy</title>
-    <link rel="stylesheet" href="style.css?v=5">
+    <link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
+    <!-- Shown on mobile portrait orientation -->
+    <div id="rotate-notice">
+        <div class="rotate-icon">&#8635;</div>
+        <p>Please rotate your device to landscape to play!</p>
+    </div>
+
     <div id="game-container">
         <!-- Background video loop -->
         <video id="bg-video" autoplay loop muted playsinline>

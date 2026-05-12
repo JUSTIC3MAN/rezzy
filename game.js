@@ -885,3 +885,56 @@ function gameLoop() {
 spriteImage.onload = () => {
     gameLoop();
 };
+
+// ─── Mobile video unlock ───────────────────────────────────────────────────
+// Mobile browsers (especially Safari) will not autoplay videos unless triggered
+// by a user gesture. We detect this silently: if the bg video isn't playing
+// after a short delay, we create a transparent overlay. The user taps it once
+// (they often do this naturally to start playing), and the overlay vanishes.
+const bgVideo = document.getElementById('bg-video');
+const fgVideo = document.getElementById('fg-video');
+
+// Attempt to play both videos immediately (works fine on desktop)
+bgVideo.play().catch(() => {});
+fgVideo.play().catch(() => {});
+
+// After 800ms, check if the video actually started. If not, show unlock overlay.
+setTimeout(() => {
+    // paused means autoplay was blocked
+    if (bgVideo.paused) {
+        const overlay = document.createElement('div');
+        overlay.id = 'video-unlock-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 9998;
+            background: transparent;
+            cursor: pointer;
+        `;
+        document.body.appendChild(overlay);
+
+        const hint = document.createElement('div');
+        hint.style.cssText = `
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.7);
+            font-family: sans-serif;
+            font-size: 18px;
+            z-index: 9999;
+            text-align: center;
+            pointer-events: none;
+        `;
+        hint.textContent = 'Tap to begin';
+        document.body.appendChild(hint);
+
+        overlay.addEventListener('pointerdown', () => {
+            bgVideo.play().catch(() => {});
+            fgVideo.play().catch(() => {});
+            overlay.remove();
+            hint.remove();
+        }, { once: true });
+    }
+}, 800);

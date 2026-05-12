@@ -10,6 +10,53 @@ body, html {
     align-items: center;
 }
 
+/* Portrait orientation warning overlay */
+#rotate-notice {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    z-index: 9999;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #39FF14;
+    font-family: sans-serif;
+    text-align: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+#rotate-notice .rotate-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    animation: spin 2s infinite ease-in-out;
+}
+
+#rotate-notice p {
+    font-size: 20px;
+    margin: 0;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    50% { transform: rotate(-90deg); }
+    100% { transform: rotate(0deg); }
+}
+
+/* Show the rotate notice in portrait mode on mobile */
+@media screen and (orientation: portrait) and (max-width: 900px) {
+    #rotate-notice {
+        display: flex;
+    }
+    #game-container {
+        display: none;
+    }
+}
+
 #game-container {
     position: relative;
     aspect-ratio: 16 / 9;
@@ -17,6 +64,7 @@ body, html {
     max-height: 100vh;
     /* This ensures it scales to fit the screen while keeping 16:9 */
     width: 100%;
+    touch-action: none; /* Prevents scroll interference on mobile touch */
 }
 
 /* If the screen is taller than 16:9, width hits 100vw.
