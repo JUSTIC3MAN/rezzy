@@ -111,8 +111,9 @@ let speed = 12; // Moderate slowdown for transitioning between slots
 let freezeTimer = 0; // Timer to freeze input
 
 // Animation variables for the 5x11 sprite sheet (Idle)
-const FRAME_WIDTH = 800; // 4000 / 5
-const FRAME_HEIGHT = 444; // 4884 / 11
+// NOTE: Sprites were resized from 4000px wide to 1600px wide (same proportions)
+const FRAME_WIDTH = 320; // 1600 / 5
+const FRAME_HEIGHT = Math.round(1600 / (4000 / 444)); // ~178 — proportional to original
 const COLS = 5;
 const TOTAL_FRAMES = 52;
 
@@ -128,8 +129,9 @@ let grabOffsetX = 0;
 let grabOffsetY = 0;
 
 // Fairy Sprite animation variables
-const FAIRY_SPRITE_WIDTH = 400;
-const FAIRY_SPRITE_HEIGHT = 400;
+// NOTE: Sprite sheets resized from 2000px to 800px wide, frames are now 160x160 (was 400x400)
+const FAIRY_SPRITE_WIDTH = 160;
+const FAIRY_SPRITE_HEIGHT = 160;
 const FAIRY_SPRITE_COLS = 5;
 const FAIRY_SPRITE_TOTAL_FRAMES = 81;
 let isPlayingFairy = false;
@@ -139,19 +141,19 @@ const fairySpriteDelay = 4;
 let fairySpriteOffsetY = 250;
 
 // Lightning Sprite animation variables
-const LIGHTNING_SPRITE_WIDTH = 400;
-const LIGHTNING_SPRITE_HEIGHT = 400;
+const LIGHTNING_SPRITE_WIDTH = 160;
+const LIGHTNING_SPRITE_HEIGHT = 160;
 const LIGHTNING_SPRITE_COLS = 5;
 const LIGHTNING_SPRITE_TOTAL_FRAMES = 51;
 let isPlayingLightning = false;
 let currentLightningFrame = 0;
 let lightningFrameTimer = 0;
 const lightningSpriteDelay = 4;
-let lightningSpriteOffsetY = 250; // Increased to lower it closer to the player's head
+let lightningSpriteOffsetY = 250;
 
 // Boom Sprite animation variables
-const BOOM_SPRITE_WIDTH = 400;
-const BOOM_SPRITE_HEIGHT = 400;
+const BOOM_SPRITE_WIDTH = 160;
+const BOOM_SPRITE_HEIGHT = 160;
 const BOOM_SPRITE_COLS = 5;
 const BOOM_SPRITE_TOTAL_FRAMES = 81;
 let isPlayingBoom = false;
@@ -161,8 +163,8 @@ const boomSpriteDelay = 4;
 let boomSpriteOffsetY = 250;
 
 // Lagoon Sprite animation variables
-const LAGOON_SPRITE_WIDTH = 400;
-const LAGOON_SPRITE_HEIGHT = 400;
+const LAGOON_SPRITE_WIDTH = 160;
+const LAGOON_SPRITE_HEIGHT = 160;
 const LAGOON_SPRITE_COLS = 5;
 const LAGOON_SPRITE_TOTAL_FRAMES = 66;
 let isPlayingLagoon = false;
@@ -900,6 +902,23 @@ const criticalImages = [
     progressBarFilledImage,
     arrowImage,
 ];
+
+// ─── Safari / iOS fix ────────────────────────────────────────────────────────
+// Safari does not support WebM with alpha transparency.
+// The fg-video (NewObjects.webm) has alpha, so on Safari it renders as a solid
+// opaque black layer covering the entire canvas — that's the "black screen" bug.
+// Fix: detect Safari/iOS and simply hide the fg-video on those browsers.
+// The game is fully playable without the counter overlay; it just won't have the
+// animated foreground. Background video (MP4) will still work fine.
+const isSafariOrIOS = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) ||
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+if (isSafariOrIOS) {
+    const fgEl = document.getElementById('fg-video');
+    if (fgEl) fgEl.style.display = 'none';
+    console.log('[Rezzy] Safari/iOS detected — fg-video hidden (no WebM alpha support)');
+}
 
 let loadedCount = 0;
 let gameLoopStarted = false;
