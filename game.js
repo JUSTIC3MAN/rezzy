@@ -339,6 +339,10 @@ window.addEventListener('pointerdown', (e) => {
 function update() {
     if (freezeTimer > 0) {
         freezeTimer--;
+        if (freezeTimer === 0 && isGrabbing) {
+            isGrabbing = false; // Grab hold ends when input-freeze expires
+            currentGrabFrame = 0;
+        }
     }
 
     // Smoothly move the character towards the target X position
@@ -365,28 +369,14 @@ function update() {
 
     // Update animations
     if (!isGrabbing) {
-        // Loop the idle animation through row 0 only (frames 0–4).
-        // Cycling into higher rows shifts the source Y by FRAME_HEIGHT each row,
-        // which makes Rezzy appear to drift downward. Staying on row 0 keeps
-        // source Y = 0 always, so the vertical position never changes.
-        frameTimer++;
-        if (frameTimer >= frameDelay) {
-            frameTimer = 0;
-            currentFrame = (currentFrame + 1) % COLS; // COLS=5 → frames 0,1,2,3,4,0,1,...
-        }
+        // Rezzy is frozen on frame 0 (col=0, row=0) to prevent any vertical movement.
+        // The sprite sheet frames have the character art at slightly different heights
+        // per-column, so cycling frames causes visible vertical bobbing. Frozen = no bob.
+        currentFrame = 0;
     } else {
-        // Update grab animation, staying on row 0 only (frames 0–4).
-        // Same fix as idle: advancing past row 0 shifts source Y and causes vertical drift.
-        grabFrameTimer++;
-        if (grabFrameTimer >= grabFrameDelay) {
-            grabFrameTimer = 0;
-            currentGrabFrame++;
-            // When grab animation finishes (end of row 0), revert to idle
-            if (currentGrabFrame >= GRAB_COLS) {
-                isGrabbing = false;
-                currentGrabFrame = 0;
-            }
-        }
+        // Grab animation also frozen at frame 0 to prevent vertical drift.
+        currentGrabFrame = 0;
+        // Still revert to idle after the freeze timer expires (handled by freezeTimer in executeGrabAction)
     }
 
     // Update fairy sprite animation independently
