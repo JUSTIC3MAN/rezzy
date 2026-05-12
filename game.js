@@ -443,7 +443,44 @@ function draw() {
     ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
 
-    // Draw the customers layer first so it is behind Rezzy and the items
+    // ── Draw Rezzy FIRST (lowest priority — behind customers and counter) ──────
+    const activeImage = isGrabbing ? grabImage : spriteImage;
+    const activeFrame = isGrabbing ? currentGrabFrame : currentFrame;
+    const activeCols = isGrabbing ? GRAB_COLS : COLS;
+
+    if (activeImage.complete && activeImage.width > 0) {
+        // Use the exact (float) frame height for the active animation.
+        // Idle and Grab sheets have different heights (1954/11 vs 1598/9) that are
+        // not whole numbers. Using Math.floor caused ~0.636px error per row that
+        // accumulated to ~7px source drift by row 10, producing ~30px visible bounce.
+        const activeFrameH = isGrabbing ? GRAB_FRAME_HEIGHT : FRAME_HEIGHT;
+
+        const scale = (GAME_HEIGHT * 0.70) / activeFrameH;
+        const scaledWidth = FRAME_WIDTH * scale;
+        const scaledHeight = activeFrameH * scale; // = GAME_HEIGHT * 0.70 always
+
+        // Calculate the position of the current frame on the sprite sheet
+        const col = activeFrame % activeCols;
+        const row = Math.floor(activeFrame / activeCols);
+
+        // Apply offsets if currently grabbing, else 0
+        const currentOffsetX = isGrabbing ? grabOffsetX : 0;
+        const currentOffsetY = isGrabbing ? grabOffsetY : 0;
+
+        // Draw just the current frame, properly scaled.
+        // Source Y uses exact float activeFrameH so row positions never drift.
+        ctx.drawImage(
+            activeImage,
+            col * FRAME_WIDTH, row * activeFrameH, // Source x, y (exact float — no drift)
+            FRAME_WIDTH, activeFrameH,             // Source width, height
+            Math.floor(characterX - scaledWidth / 2 + currentOffsetX),
+            Math.floor(characterY - scaledHeight / 2 + currentOffsetY),
+            scaledWidth,
+            scaledHeight
+        );
+    }
+
+    // ── Draw customers AFTER Rezzy so the cat layer is always in front ────────
     if (customersImage.complete && customersImage.width > 0) {
         const custScale = (GAME_HEIGHT * 1.0) / FRAME_HEIGHT;
         const scaledWidth = FRAME_WIDTH * custScale;
@@ -535,42 +572,6 @@ function draw() {
         }
     }
 
-    const activeImage = isGrabbing ? grabImage : spriteImage;
-    const activeFrame = isGrabbing ? currentGrabFrame : currentFrame;
-    const activeCols = isGrabbing ? GRAB_COLS : COLS;
-
-    if (activeImage.complete && activeImage.width > 0) {
-        // Use the exact (float) frame height for the active animation.
-        // Idle and Grab sheets have different heights (1954/11 vs 1598/9) that are
-        // not whole numbers. Using Math.floor caused ~0.636px error per row that
-        // accumulated to ~7px source drift by row 10, producing ~30px visible bounce.
-        const activeFrameH = isGrabbing ? GRAB_FRAME_HEIGHT : FRAME_HEIGHT;
-
-        const scale = (GAME_HEIGHT * 0.70) / activeFrameH;
-        const scaledWidth = FRAME_WIDTH * scale;
-        const scaledHeight = activeFrameH * scale; // = GAME_HEIGHT * 0.70 always
-
-        // Calculate the position of the current frame on the sprite sheet
-        const col = activeFrame % activeCols;
-        const row = Math.floor(activeFrame / activeCols);
-
-        // Apply offsets if currently grabbing, else 0
-        const currentOffsetX = isGrabbing ? grabOffsetX : 0;
-        const currentOffsetY = isGrabbing ? grabOffsetY : 0;
-
-        // Draw just the current frame, properly scaled.
-        // Source Y uses exact float activeFrameH so row positions never drift.
-        ctx.drawImage(
-            activeImage,
-            col * FRAME_WIDTH, row * activeFrameH, // Source x, y (exact float — no drift)
-            FRAME_WIDTH, activeFrameH,             // Source width, height
-            Math.floor(characterX - scaledWidth / 2 + currentOffsetX),
-            Math.floor(characterY - scaledHeight / 2 + currentOffsetY),
-            scaledWidth,
-            scaledHeight
-        );
-
-    }
 
     // ── Draw fg-video on canvas here so it sits ABOVE Rezzy but BELOW UI ──────
     // This fixes the z-index compositing issue on mobile browsers where <canvas>
