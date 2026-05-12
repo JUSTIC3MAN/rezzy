@@ -111,11 +111,12 @@ let speed = 12; // Moderate slowdown for transitioning between slots
 let freezeTimer = 0; // Timer to freeze input
 
 // Animation variables for the 5x11 sprite sheet (Idle)
-// NOTE: Sprites were resized from 4000px wide to 1600px wide (same proportions)
-const FRAME_WIDTH = 320; // 1600 / 5
-const FRAME_HEIGHT = Math.round(1600 / (4000 / 444)); // ~178 — proportional to original
+// NOTE: FRAME_WIDTH/HEIGHT are computed dynamically after images load to ensure perfect alignment
 const COLS = 5;
+const ROWS = 11;
 const TOTAL_FRAMES = 52;
+let FRAME_WIDTH = 320;  // Initial fallback (updated on load)
+let FRAME_HEIGHT = 178; // Initial fallback (updated on load)
 
 // Animation variables for the 5x9 sprite sheet (Grab)
 const GRAB_COLS = 5;
@@ -563,7 +564,18 @@ function draw() {
 
     }
 
-    // ==========================================
+    // ── Draw fg-video on canvas here so it sits ABOVE Rezzy but BELOW UI ──────
+    // This fixes the z-index compositing issue on mobile browsers where <canvas>
+    // and <video> elements don't always stack in the correct CSS z-index order.
+    // On Chrome: WebM alpha is respected by ctx.drawImage — transparent areas show through.
+    // On Safari: fg-video is hidden (no WebM alpha support), so we skip this.
+    if (!isSafariOrIOS) {
+        const fgVid = document.getElementById('fg-video');
+        if (fgVid && fgVid.readyState >= 2) {
+            ctx.drawImage(fgVid, 0, 0, GAME_WIDTH, GAME_HEIGHT);
+        }
+    }
+
     // 🔧 STATIC COUNTER BOTTLES CONTROLS 🔧
     // ==========================================
     // Increase this number to make the bottles on the counter brighter (100% is normal)
@@ -928,6 +940,19 @@ function tryStartGame() {
     loadedCount++;
     if (loadedCount >= criticalImages.length) {
         gameLoopStarted = true;
+
+        // Compute FRAME_WIDTH/HEIGHT from actual loaded image to prevent bouncing
+        // These must be integer values that perfectly divide the sprite sheet
+        if (spriteImage.naturalWidth > 0) {
+            FRAME_WIDTH  = Math.floor(spriteImage.naturalWidth  / COLS);
+            FRAME_HEIGHT = Math.floor(spriteImage.naturalHeight / ROWS);
+        }
+
+        // Hide HTML fg-video — we draw it directly on the canvas instead,
+        // which fixes z-order compositing issues on mobile browsers.
+        const fgEl = document.getElementById('fg-video');
+        if (fgEl && !isSafariOrIOS) fgEl.style.visibility = 'hidden';
+
         gameLoop();
     }
 }
