@@ -120,7 +120,9 @@ let FRAME_HEIGHT = 178; // Initial fallback (updated on load)
 
 // Animation variables for the 5x9 sprite sheet (Grab)
 const GRAB_COLS = 5;
+const GRAB_ROWS = 9;
 const GRAB_TOTAL_FRAMES = 43; // Based on 9 rows, stopping before the empty frames at the end
+let GRAB_FRAME_HEIGHT = 177.56; // Exact fallback (1598/9); recomputed dynamically on load
 let isGrabbing = false;
 let currentGrabFrame = 0;
 let grabFrameTimer = 0;
@@ -339,10 +341,6 @@ window.addEventListener('pointerdown', (e) => {
 function update() {
     if (freezeTimer > 0) {
         freezeTimer--;
-        if (freezeTimer === 0 && isGrabbing) {
-            isGrabbing = false; // Grab hold ends when input-freeze expires
-            currentGrabFrame = 0;
-        }
     }
 
     // Smoothly move the character towards the target X position
@@ -367,16 +365,25 @@ function update() {
         }
     });
 
-    // Update animations
+    // Update animations — full idle + grab cycles restored.
+    // Vertical stability is now guaranteed by using exact float FRAME_HEIGHT (no Math.floor)
+    // in the draw call, so row * FRAME_HEIGHT is always precise with zero accumulation error.
     if (!isGrabbing) {
-        // Rezzy is frozen on frame 0 (col=0, row=0) to prevent any vertical movement.
-        // The sprite sheet frames have the character art at slightly different heights
-        // per-column, so cycling frames causes visible vertical bobbing. Frozen = no bob.
-        currentFrame = 0;
+        frameTimer++;
+        if (frameTimer >= frameDelay) {
+            frameTimer = 0;
+            currentFrame = (currentFrame + 1) % TOTAL_FRAMES;
+        }
     } else {
-        // Grab animation also frozen at frame 0 to prevent vertical drift.
-        currentGrabFrame = 0;
-        // Still revert to idle after the freeze timer expires (handled by freezeTimer in executeGrabAction)
+        grabFrameTimer++;
+        if (grabFrameTimer >= grabFrameDelay) {
+            grabFrameTimer = 0;
+            currentGrabFrame++;
+            if (currentGrabFrame >= GRAB_TOTAL_FRAMES) {
+                isGrabbing = false;
+                currentGrabFrame = 0;
+            }
+        }
     }
 
     // Update fairy sprite animation independently
@@ -533,11 +540,15 @@ function draw() {
     const activeCols = isGrabbing ? GRAB_COLS : COLS;
 
     if (activeImage.complete && activeImage.width > 0) {
-        // Scaled up to be twice as big (70% of the game height)
-        const scale = (GAME_HEIGHT * 0.70) / FRAME_HEIGHT;
+        // Use the exact (float) frame height for the active animation.
+        // Idle and Grab sheets have different heights (1954/11 vs 1598/9) that are
+        // not whole numbers. Using Math.floor caused ~0.636px error per row that
+        // accumulated to ~7px source drift by row 10, producing ~30px visible bounce.
+        const activeFrameH = isGrabbing ? GRAB_FRAME_HEIGHT : FRAME_HEIGHT;
 
+        const scale = (GAME_HEIGHT * 0.70) / activeFrameH;
         const scaledWidth = FRAME_WIDTH * scale;
-        const scaledHeight = FRAME_HEIGHT * scale;
+        const scaledHeight = activeFrameH * scale; // = GAME_HEIGHT * 0.70 always
 
         // Calculate the position of the current frame on the sprite sheet
         const col = activeFrame % activeCols;
@@ -547,15 +558,16 @@ function draw() {
         const currentOffsetX = isGrabbing ? grabOffsetX : 0;
         const currentOffsetY = isGrabbing ? grabOffsetY : 0;
 
-        // Draw just the current frame, properly scaled
+        // Draw just the current frame, properly scaled.
+        // Source Y uses exact float activeFrameH so row positions never drift.
         ctx.drawImage(
             activeImage,
-            col * FRAME_WIDTH, row * FRAME_HEIGHT, // Source x, y
-            FRAME_WIDTH, FRAME_HEIGHT,             // Source width, height
+            col * FRAME_WIDTH, row * activeFrameH, // Source x, y (exact float — no drift)
+            FRAME_WIDTH, activeFrameH,             // Source width, height
             Math.floor(characterX - scaledWidth / 2 + currentOffsetX),
-            Math.floor(characterY - scaledHeight / 2 + currentOffsetY),         // Destination x, y
+            Math.floor(characterY - scaledHeight / 2 + currentOffsetY),
             scaledWidth,
-            scaledHeight                           // Destination width, height
+            scaledHeight
         );
 
     }
@@ -937,11 +949,16 @@ function tryStartGame() {
     if (loadedCount >= criticalImages.length) {
         gameLoopStarted = true;
 
-        // Compute FRAME_WIDTH/HEIGHT from actual loaded image to prevent bouncing
-        // These must be integer values that perfectly divide the sprite sheet
+        // Compute exact (float) frame dimensions from actual image pixels.
+        // Do NOT use Math.floor — the sheet heights (1954, 1598) are not evenly
+        // divisible by their row counts (11, 9), so flooring causes accumulating
+        // source-Y error that manifests as vertical drift during animation.
         if (spriteImage.naturalWidth > 0) {
-            FRAME_WIDTH  = Math.floor(spriteImage.naturalWidth  / COLS);
-            FRAME_HEIGHT = Math.floor(spriteImage.naturalHeight / ROWS);
+            FRAME_WIDTH       = spriteImage.naturalWidth  / COLS; // 1600/5 = 320 exactly
+            FRAME_HEIGHT      = spriteImage.naturalHeight / ROWS; // 1954/11 = 177.636...
+        }
+        if (grabImage.naturalWidth > 0) {
+            GRAB_FRAME_HEIGHT = grabImage.naturalHeight / GRAB_ROWS; // 1598/9 = 177.556...
         }
 
         // Hide HTML fg-video — we draw it directly on the canvas instead,
