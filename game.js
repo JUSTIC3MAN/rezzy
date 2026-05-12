@@ -438,11 +438,6 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-    // Draw background video directly on canvas (works on all mobile browsers)
-    const bgVid = document.getElementById('bg-video');
-    if (bgVid && bgVid.readyState >= 2) {
-        ctx.drawImage(bgVid, 0, 0, GAME_WIDTH, GAME_HEIGHT);
-    }
 
     // Draw the customers layer first so it is behind Rezzy and the items
     if (customersImage.complete && customersImage.width > 0) {
@@ -879,13 +874,6 @@ function draw() {
 
     // Reset filter
     ctx.filter = 'none';
-
-    // Draw foreground overlay video on canvas (counter, portal, objects)
-    // Drawing directly on canvas bypasses Safari's WebM alpha restriction
-    const fgVid = document.getElementById('fg-video');
-    if (fgVid && fgVid.readyState >= 2) {
-        ctx.drawImage(fgVid, 0, 0, GAME_WIDTH, GAME_HEIGHT);
-    }
 }
 
 function gameLoop() {
@@ -895,59 +883,82 @@ function gameLoop() {
 }
 
 
-spriteImage.onload = () => {
-    gameLoop();
-};
+// ─── Asset Loading & Game Start ─────────────────────────────────────────────
+// Wait for ALL critical images to load before starting the game loop.
+// On mobile, we can't start until everything is ready or items will be invisible.
 
-// ─── Mobile video unlock ───────────────────────────────────────────────────
-// Mobile browsers (especially Safari) will not autoplay videos unless triggered
-// by a user gesture. We detect this silently: if the bg video isn't playing
-// after a short delay, we create a transparent overlay. The user taps it once
-// (they often do this naturally to start playing), and the overlay vanishes.
+const criticalImages = [
+    spriteImage,
+    grabImage,
+    customersImage,
+    fairyImage,
+    lightningImage,
+    boomImage,
+    lagoonImage,
+    thoughtBubbleImage,
+    progressBarImage,
+    progressBarFilledImage,
+    arrowImage,
+];
+
+let loadedCount = 0;
+let gameLoopStarted = false;
+
+function tryStartGame() {
+    if (gameLoopStarted) return;
+    loadedCount++;
+    if (loadedCount >= criticalImages.length) {
+        gameLoopStarted = true;
+        gameLoop();
+    }
+}
+
+criticalImages.forEach(img => {
+    if (img.complete && img.naturalWidth > 0) {
+        tryStartGame(); // Already loaded (e.g. from cache)
+    } else {
+        img.addEventListener('load', tryStartGame);
+        img.addEventListener('error', tryStartGame); // Don't block on broken assets
+    }
+});
+
+// ─── Mobile video unlock ─────────────────────────────────────────────────────
+// Mobile Safari blocks autoplay. We detect this and show a subtle "Tap to begin"
+// prompt. On desktop this never appears.
 const bgVideo = document.getElementById('bg-video');
 const fgVideo = document.getElementById('fg-video');
 
-// Attempt to play both videos immediately (works fine on desktop)
+// Try to play immediately (works on desktop and Android Chrome)
 bgVideo.play().catch(() => {});
 fgVideo.play().catch(() => {});
 
-// After 800ms, check if the video actually started. If not, show unlock overlay.
 setTimeout(() => {
-    // paused means autoplay was blocked
-    if (bgVideo.paused) {
-        const overlay = document.createElement('div');
-        overlay.id = 'video-unlock-overlay';
-        overlay.style.cssText = `
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            z-index: 9998;
-            background: transparent;
-            cursor: pointer;
-        `;
-        document.body.appendChild(overlay);
+    if (!bgVideo.paused) return; // Already playing - no need for overlay
 
-        const hint = document.createElement('div');
-        hint.style.cssText = `
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255,255,255,0.7);
-            font-family: sans-serif;
-            font-size: 18px;
-            z-index: 9999;
-            text-align: center;
-            pointer-events: none;
-        `;
-        hint.textContent = 'Tap to begin';
-        document.body.appendChild(hint);
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed; top: 0; left: 0;
+        width: 100%; height: 100%;
+        z-index: 9998; background: transparent; cursor: pointer;
+    `;
+    document.body.appendChild(overlay);
 
-        overlay.addEventListener('pointerdown', () => {
-            bgVideo.play().catch(() => {});
-            fgVideo.play().catch(() => {});
-            overlay.remove();
-            hint.remove();
-        }, { once: true });
-    }
-}, 800);
+    const hint = document.createElement('div');
+    hint.style.cssText = `
+        position: fixed; bottom: 40px; left: 50%;
+        transform: translateX(-50%);
+        color: rgba(255,255,255,0.85); font-family: sans-serif;
+        font-size: 22px; z-index: 9999; text-align: center;
+        pointer-events: none; text-shadow: 0 0 10px #000;
+        background: rgba(0,0,0,0.5); padding: 12px 24px; border-radius: 30px;
+    `;
+    hint.textContent = '▶  Tap to begin';
+    document.body.appendChild(hint);
+
+    overlay.addEventListener('pointerdown', () => {
+        bgVideo.play().catch(() => {});
+        fgVideo.play().catch(() => {});
+        overlay.remove();
+        hint.remove();
+    }, { once: true });
+}, 1200);
