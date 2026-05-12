@@ -365,20 +365,24 @@ function update() {
 
     // Update animations
     if (!isGrabbing) {
-        // Loop the idle animation constantly
+        // Loop the idle animation through row 0 only (frames 0–4).
+        // Cycling into higher rows shifts the source Y by FRAME_HEIGHT each row,
+        // which makes Rezzy appear to drift downward. Staying on row 0 keeps
+        // source Y = 0 always, so the vertical position never changes.
         frameTimer++;
         if (frameTimer >= frameDelay) {
             frameTimer = 0;
-            currentFrame = (currentFrame + 1) % TOTAL_FRAMES;
+            currentFrame = (currentFrame + 1) % COLS; // COLS=5 → frames 0,1,2,3,4,0,1,...
         }
     } else {
-        // Update grab animation faster
+        // Update grab animation, staying on row 0 only (frames 0–4).
+        // Same fix as idle: advancing past row 0 shifts source Y and causes vertical drift.
         grabFrameTimer++;
         if (grabFrameTimer >= grabFrameDelay) {
             grabFrameTimer = 0;
             currentGrabFrame++;
-            // When grab animation finishes, revert to idle
-            if (currentGrabFrame >= GRAB_TOTAL_FRAMES) {
+            // When grab animation finishes (end of row 0), revert to idle
+            if (currentGrabFrame >= GRAB_COLS) {
                 isGrabbing = false;
                 currentGrabFrame = 0;
             }
