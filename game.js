@@ -438,6 +438,12 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
+    // Draw background video directly on canvas (works on all mobile browsers)
+    const bgVid = document.getElementById('bg-video');
+    if (bgVid && bgVid.readyState >= 2) {
+        ctx.drawImage(bgVid, 0, 0, GAME_WIDTH, GAME_HEIGHT);
+    }
+
     // Draw the customers layer first so it is behind Rezzy and the items
     if (customersImage.complete && customersImage.width > 0) {
         const custScale = (GAME_HEIGHT * 1.0) / FRAME_HEIGHT;
@@ -873,6 +879,13 @@ function draw() {
 
     // Reset filter
     ctx.filter = 'none';
+
+    // Draw foreground overlay video on canvas (counter, portal, objects)
+    // Drawing directly on canvas bypasses Safari's WebM alpha restriction
+    const fgVid = document.getElementById('fg-video');
+    if (fgVid && fgVid.readyState >= 2) {
+        ctx.drawImage(fgVid, 0, 0, GAME_WIDTH, GAME_HEIGHT);
+    }
 }
 
 function gameLoop() {
