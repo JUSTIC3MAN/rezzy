@@ -69,22 +69,22 @@ let isVictoryState = false; // Set to true when level is won
 // (Approximate position for the leftmost box on the wagon)
 let fairyX = GAME_WIDTH * 0.25;
 let fairyY = GAME_HEIGHT * 0.85;
-let fairyScale = 0.08; // Scaled down since original is 3046x3046
+let fairyScale = 0.47; // Adjusted for resized image (was 0.08 for 3046px, now 512px)
 
 // Variables for the blue lightning position and scale (second box)
 let lightningX = GAME_WIDTH * 0.40; // Shifted right from the first box
 let lightningY = GAME_HEIGHT * 0.85; // Same height
-let lightningScale = 0.08;
+let lightningScale = 0.47;
 
 // Variables for the red white and boom position and scale (third box)
 let boomX = GAME_WIDTH * 0.55; // Shifted right from the second box
 let boomY = GAME_HEIGHT * 0.85; // Same height
-let boomScale = 0.08;
+let boomScale = 0.47;
 
 // Variables for the mermaid lagoon position and scale (fourth box)
 let lagoonX = GAME_WIDTH * 0.70; // Shifted right from the third box
 let lagoonY = GAME_HEIGHT * 0.85; // Same height
-let lagoonScale = 0.08;
+let lagoonScale = 0.47;
 
 const slotPositions = [
     GAME_WIDTH * 0.25, // Fairy
