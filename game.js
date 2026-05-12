@@ -448,9 +448,11 @@ function draw() {
         const scaledWidth = FRAME_WIDTH * custScale;
         const scaledHeight = FRAME_HEIGHT * custScale;
 
-        // Animate the customers sprite sheet exactly like Rezzy's idle animation
-        const col = currentFrame % COLS;
-        const row = Math.floor(currentFrame / COLS);
+        // Customers are frozen on a static frame — do NOT animate them with currentFrame.
+        // Cycling through frames changes the row in the sprite sheet which shifts their
+        // vertical position, making them appear to bob up and down. Lock to frame 0.
+        const col = 0;
+        const row = 0;
 
         const custX = GAME_WIDTH / 2;
         const custY = GAME_HEIGHT * 0.515;
