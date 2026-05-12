@@ -2,7 +2,7 @@ const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
 
 const bangersFont = new FontFace('Bangers', 'url(font/Bangers/Bangers-Regular.ttf)');
-bangersFont.load().then(function(font) {
+bangersFont.load().then(function (font) {
     document.fonts.add(font);
 });
 
@@ -54,6 +54,9 @@ progressBarImage.src = 'Items/progressbar.png';
 
 const progressBarFilledImage = new Image();
 progressBarFilledImage.src = 'Items/progressbarfilled.png';
+
+const arrowImage = new Image();
+arrowImage.src = 'Items/arrow.png';
 
 let currentProgressBarFill = 0; // Current visual fill level (0 to 1)
 let totalCorrectOrders = 0; // Track total correct orders
@@ -172,18 +175,10 @@ let currentFrame = 0;
 let frameTimer = 0;
 const frameDelay = 8; // Adjust for animation speed
 
-window.addEventListener('keydown', (e) => {
-    // Prevent any input if the player is currently frozen or in victory state
-    if (freezeTimer > 0 || isVictoryState) return;
 
-    // Only allow input if not already moving
-    if (characterX === targetX) {
-        // Prevent holding the key from skipping multiple slots instantly
-        if (e.repeat) return;
-
-        if (e.code === 'Space' || e.key === ' ') {
-            if (!isGrabbing) {
-                freezeTimer = 120; // Freeze input for 2 seconds (120 frames at 60fps)
+function executeGrabAction() {
+    if (isGrabbing) return;
+    freezeTimer = 60; // Reduced freeze input to 1 second (60 frames at 60fps) for snappier gameplay
                 isGrabbing = true;
                 currentGrabFrame = 0; // Start grab animation from beginning
                 grabFrameTimer = 0; // Reset frame timer
@@ -224,11 +219,11 @@ window.addEventListener('keydown', (e) => {
                         currentStreak++;
                         totalCorrectOrders++;
                         activeOrders.shift(); // Remove oldest order
-                        
+
                         // Check for victory condition
                         if (totalCorrectOrders >= maxOrdersForLevel) {
                             isVictoryState = true;
-                            
+
                             // Pause for 3 seconds then start the next level
                             setTimeout(() => {
                                 currentLevel++;
@@ -236,7 +231,7 @@ window.addEventListener('keydown', (e) => {
                                 totalCorrectOrders = 0;
                                 currentProgressBarFill = 0; // Reset visual gauge instantly
                                 isVictoryState = false;
-                                
+
                                 // Generate the first order for the new level
                                 let newItemIndex = Math.floor(Math.random() * 4);
                                 activeOrders.push({
@@ -246,7 +241,7 @@ window.addEventListener('keydown', (e) => {
                                 });
                                 nextCustomerIndex = (nextCustomerIndex + 1) % 5;
                             }, 3000);
-                            
+
                             // We don't push a new order when in victory state immediately
                         } else {
                             // Generate a new random order that is guaranteed to be different from the one just fulfilled
@@ -255,13 +250,13 @@ window.addEventListener('keydown', (e) => {
                             while (newItemIndex === currentSlot || (nextCustomerIndex === 2 && newItemIndex === 3)) {
                                 newItemIndex = Math.floor(Math.random() * 4);
                             }
-                            
+
                             activeOrders.push({
                                 customerIndex: nextCustomerIndex,
                                 itemIndex: newItemIndex,
                                 revealProgress: 0
                             });
-                            
+
                             // Increment and wrap customer index
                             nextCustomerIndex = (nextCustomerIndex + 1) % 5;
                         }
@@ -270,7 +265,19 @@ window.addEventListener('keydown', (e) => {
                         currentStreak = 0;
                     }
                 }
-            }
+}
+
+window.addEventListener('keydown', (e) => {
+    // Prevent any input if the player is currently frozen or in victory state
+    if (freezeTimer > 0 || isVictoryState) return;
+
+    // Only allow input if not already moving
+    if (characterX === targetX) {
+        // Prevent holding the key from skipping multiple slots instantly
+        if (e.repeat) return;
+
+        if (e.code === 'Space' || e.key === ' ') {
+            executeGrabAction();
         } else if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') {
             if (currentSlot > 0) {
                 currentSlot--;
@@ -282,6 +289,47 @@ window.addEventListener('keydown', (e) => {
                 targetX = slotPositions[currentSlot];
             }
         }
+    }
+});
+
+// Mobile support: listen to pointerdown events (mouse or touch)
+window.addEventListener('pointerdown', (e) => {
+    // If the game hasn't started yet, tapping the screen handles start logic, not gameplay
+    if (freezeTimer > 0 || isVictoryState) return;
+    
+    if (characterX !== targetX) return; // Only allow input if not already moving
+
+    const rect = canvas.getBoundingClientRect();
+    
+    // Ignore clicks outside the main game area bounding box
+    if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
+        return;
+    }
+
+    // Map screen coordinates to internal 1920x1080 GAME_WIDTH/GAME_HEIGHT coordinates
+    const scaleX = GAME_WIDTH / rect.width;
+    const scaleY = GAME_HEIGHT / rect.height;
+    
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    // Hitbox for Left Arrow (bottom left, roughly left 25%)
+    if (x < GAME_WIDTH * 0.25 && y > GAME_HEIGHT * 0.70) {
+        if (currentSlot > 0) {
+            currentSlot--;
+            targetX = slotPositions[currentSlot];
+        }
+    }
+    // Hitbox for Right Arrow (bottom right, roughly right 25%)
+    else if (x > GAME_WIDTH * 0.75 && y > GAME_HEIGHT * 0.70) {
+        if (currentSlot < 3) {
+            currentSlot++;
+            targetX = slotPositions[currentSlot];
+        }
+    }
+    // Hitbox for the Green Rotating Portal (center of the screen, middle section)
+    else if (x > GAME_WIDTH * 0.25 && x < GAME_WIDTH * 0.75 && y > GAME_HEIGHT * 0.40) {
+        executeGrabAction();
     }
 });
 
@@ -307,7 +355,7 @@ function update() {
     // Update order reveal progress (slower reveal: ~5 seconds at 60fps)
     activeOrders.forEach(order => {
         if (order.revealProgress < 1) {
-            order.revealProgress += 1 / 300; 
+            order.revealProgress += 1 / 300;
             if (order.revealProgress > 1) order.revealProgress = 1;
         }
     });
@@ -336,9 +384,9 @@ function update() {
 
     // Update fairy sprite animation independently
     if (isPlayingFairy) {
-        fairyFrameTimer++;
+        fairyFrameTimer += 1.25; // Increased speed by 25%
         if (fairyFrameTimer >= fairySpriteDelay) {
-            fairyFrameTimer = 0;
+            fairyFrameTimer -= fairySpriteDelay; // Subtract delay to keep remainder for smooth sub-frame timing
             currentFairyFrame++;
             if (currentFairyFrame >= FAIRY_SPRITE_TOTAL_FRAMES) {
                 isPlayingFairy = false;
@@ -349,9 +397,9 @@ function update() {
 
     // Update lightning sprite animation independently
     if (isPlayingLightning) {
-        lightningFrameTimer++;
+        lightningFrameTimer += 1.25; // Increased speed by 25%
         if (lightningFrameTimer >= lightningSpriteDelay) {
-            lightningFrameTimer = 0;
+            lightningFrameTimer -= lightningSpriteDelay;
             currentLightningFrame++;
             if (currentLightningFrame >= LIGHTNING_SPRITE_TOTAL_FRAMES) {
                 isPlayingLightning = false;
@@ -362,9 +410,9 @@ function update() {
 
     // Update boom sprite animation independently
     if (isPlayingBoom) {
-        boomFrameTimer++;
+        boomFrameTimer += 1.25; // Increased speed by 25%
         if (boomFrameTimer >= boomSpriteDelay) {
-            boomFrameTimer = 0;
+            boomFrameTimer -= boomSpriteDelay;
             currentBoomFrame++;
             if (currentBoomFrame >= BOOM_SPRITE_TOTAL_FRAMES) {
                 isPlayingBoom = false;
@@ -375,9 +423,9 @@ function update() {
 
     // Update lagoon sprite animation independently
     if (isPlayingLagoon) {
-        lagoonFrameTimer++;
+        lagoonFrameTimer += 1.25; // Increased speed by 25%
         if (lagoonFrameTimer >= lagoonSpriteDelay) {
-            lagoonFrameTimer = 0;
+            lagoonFrameTimer -= lagoonSpriteDelay;
             currentLagoonFrame++;
             if (currentLagoonFrame >= LAGOON_SPRITE_TOTAL_FRAMES) {
                 isPlayingLagoon = false;
@@ -417,22 +465,22 @@ function draw() {
         if (!isVictoryState && thoughtBubbleImage.complete && thoughtBubbleImage.width > 0) {
             // Manually tuned horizontal offsets for each specific customer: Witch, Knight, Elf, Dwarf, Lizardman
             const customerOffsets = [0.35, 0.47, 0.58, 0.70, 0.82];
-            
+
             // Map item indices to images
             const itemImages = [fairyImage, lightningImage, boomImage, lagoonImage];
-            
+
             activeOrders.forEach((order, index) => {
                 const offset = customerOffsets[order.customerIndex];
                 const charX = (custX - scaledWidth / 2) + (scaledWidth * offset);
-                
+
                 // Set scale for the thought bubble
                 const bubbleScale = (GAME_HEIGHT * 0.22) / thoughtBubbleImage.height;
                 const bubbleWidth = thoughtBubbleImage.width * bubbleScale;
                 const bubbleHeight = thoughtBubbleImage.height * bubbleScale;
-                
+
                 // Position above the head
                 const bubbleY = custY - 220;
-                
+
                 ctx.drawImage(
                     thoughtBubbleImage,
                     Math.floor(charX - bubbleWidth / 2),
@@ -440,31 +488,31 @@ function draw() {
                     bubbleWidth,
                     bubbleHeight
                 );
-                
+
                 // Draw the specific drink inside the thought bubble
                 const orderImage = itemImages[order.itemIndex];
                 if (orderImage && orderImage.complete && orderImage.width > 0) {
                     // Scale the drink to fit inside the bubble
-                    const drinkScale = (bubbleHeight * 0.5) / orderImage.height; 
+                    const drinkScale = (bubbleHeight * 0.5) / orderImage.height;
                     const drinkWidth = orderImage.width * drinkScale;
                     const drinkHeight = orderImage.height * drinkScale;
-                    
+
                     const destX = charX - drinkWidth / 2;
                     const destY = (bubbleY - bubbleHeight / 2) + (bubbleHeight * 0.38) - (drinkHeight / 2);
-                    
+
                     const revealProgress = order.revealProgress;
-                    
+
                     if (revealProgress < 1.0) {
                         // 1. Draw black silhouette
                         ctx.filter = 'brightness(0)';
                         ctx.drawImage(orderImage, Math.floor(destX), Math.floor(destY), drinkWidth, drinkHeight);
                         ctx.filter = 'none';
-                        
+
                         // 2. Draw revealed colored portion (bottom to top)
                         if (revealProgress > 0) {
                             const sourceRevealH = orderImage.height * revealProgress;
                             const destRevealH = drinkHeight * revealProgress;
-                            
+
                             ctx.drawImage(
                                 orderImage,
                                 0, orderImage.height - sourceRevealH, orderImage.width, sourceRevealH, // Source
@@ -510,95 +558,17 @@ function draw() {
             scaledHeight                           // Destination width, height
         );
 
-        // Draw the fairy sprite above Rezzy's head if playing
-        if (isPlayingFairy && fairySpriteImage.complete && fairySpriteImage.width > 0) {
-            const fScale = (GAME_HEIGHT * 0.40) / FAIRY_SPRITE_HEIGHT;
-            const fScaledWidth = FAIRY_SPRITE_WIDTH * fScale;
-            const fScaledHeight = FAIRY_SPRITE_HEIGHT * fScale;
-
-            const fCol = currentFairyFrame % FAIRY_SPRITE_COLS;
-            const fRow = Math.floor(currentFairyFrame / FAIRY_SPRITE_COLS);
-
-            const fx = slotPositions[0] - fScaledWidth / 2;
-            const fy = characterY - scaledHeight / 2 - fScaledHeight + fairySpriteOffsetY;
-
-            ctx.drawImage(
-                fairySpriteImage,
-                fCol * FAIRY_SPRITE_WIDTH, fRow * FAIRY_SPRITE_HEIGHT,
-                FAIRY_SPRITE_WIDTH, FAIRY_SPRITE_HEIGHT,
-                Math.floor(fx), Math.floor(fy),
-                fScaledWidth, fScaledHeight
-            );
-        }
-
-        // Draw the lightning sprite above Rezzy's head if playing
-        if (isPlayingLightning && lightningSpriteImage.complete && lightningSpriteImage.width > 0) {
-            const lScale = (GAME_HEIGHT * 0.40) / LIGHTNING_SPRITE_HEIGHT; // Scale it to a reasonable size
-            const lScaledWidth = LIGHTNING_SPRITE_WIDTH * lScale;
-            const lScaledHeight = LIGHTNING_SPRITE_HEIGHT * lScale;
-
-            const lCol = currentLightningFrame % LIGHTNING_SPRITE_COLS;
-            const lRow = Math.floor(currentLightningFrame / LIGHTNING_SPRITE_COLS);
-
-            // Position above the item slot
-            const lx = slotPositions[1] - lScaledWidth / 2;
-            const ly = characterY - scaledHeight / 2 - lScaledHeight + lightningSpriteOffsetY;
-
-            ctx.drawImage(
-                lightningSpriteImage,
-                lCol * LIGHTNING_SPRITE_WIDTH, lRow * LIGHTNING_SPRITE_HEIGHT,
-                LIGHTNING_SPRITE_WIDTH, LIGHTNING_SPRITE_HEIGHT,
-                Math.floor(lx), Math.floor(ly),
-                lScaledWidth, lScaledHeight
-            );
-        }
-
-        // Draw the boom sprite above Rezzy's head if playing
-        if (isPlayingBoom && boomSpriteImage.complete && boomSpriteImage.width > 0) {
-            const bScale = (GAME_HEIGHT * 0.40) / BOOM_SPRITE_HEIGHT;
-            const bScaledWidth = BOOM_SPRITE_WIDTH * bScale;
-            const bScaledHeight = BOOM_SPRITE_HEIGHT * bScale;
-
-            const bCol = currentBoomFrame % BOOM_SPRITE_COLS;
-            const bRow = Math.floor(currentBoomFrame / BOOM_SPRITE_COLS);
-
-            const bx = slotPositions[2] - bScaledWidth / 2;
-            const by = characterY - scaledHeight / 2 - bScaledHeight + boomSpriteOffsetY;
-
-            ctx.drawImage(
-                boomSpriteImage,
-                bCol * BOOM_SPRITE_WIDTH, bRow * BOOM_SPRITE_HEIGHT,
-                BOOM_SPRITE_WIDTH, BOOM_SPRITE_HEIGHT,
-                Math.floor(bx), Math.floor(by),
-                bScaledWidth, bScaledHeight
-            );
-        }
-
-        // Draw the lagoon sprite above Rezzy's head if playing
-        if (isPlayingLagoon && lagoonSpriteImage.complete && lagoonSpriteImage.width > 0) {
-            const mScale = (GAME_HEIGHT * 0.40) / LAGOON_SPRITE_HEIGHT; // Scale it to a reasonable size
-            const mScaledWidth = LAGOON_SPRITE_WIDTH * mScale;
-            const mScaledHeight = LAGOON_SPRITE_HEIGHT * mScale;
-
-            const mCol = currentLagoonFrame % LAGOON_SPRITE_COLS;
-            const mRow = Math.floor(currentLagoonFrame / LAGOON_SPRITE_COLS);
-
-            // Position above the item slot
-            const mx = slotPositions[3] - mScaledWidth / 2;
-            const my = characterY - scaledHeight / 2 - mScaledHeight + lagoonSpriteOffsetY;
-
-            ctx.drawImage(
-                lagoonSpriteImage,
-                mCol * LAGOON_SPRITE_WIDTH, mRow * LAGOON_SPRITE_HEIGHT,
-                LAGOON_SPRITE_WIDTH, LAGOON_SPRITE_HEIGHT,
-                Math.floor(mx), Math.floor(my),
-                mScaledWidth, mScaledHeight
-            );
-        }
     }
 
-    // Set filter to make items darker
-    ctx.filter = 'brightness(50%)';
+    // ==========================================
+    // 🔧 STATIC COUNTER BOTTLES CONTROLS 🔧
+    // ==========================================
+    // Increase this number to make the bottles on the counter brighter (100% is normal)
+    const STATIC_BOTTLE_BRIGHTNESS = '70%'; // Was previously 50%
+    // ==========================================
+
+    // Set filter to apply the brightness
+    ctx.filter = `brightness(${STATIC_BOTTLE_BRIGHTNESS})`;
 
     // Draw the fairy bottle
     if (fairyImage.complete && fairyImage.width > 0) {
@@ -655,32 +625,132 @@ function draw() {
             mHeight
         );
     }
-    
+
+    // Reset filter so streak text and animated sprites are not darkened
+    ctx.filter = 'none';
+
     // Draw Streak text
     if (document.fonts.check('12px Bangers')) {
-        ctx.fillStyle = '#39FF14'; // Bright neon green
+        // ==========================================
+        // 🔧 STREAK TEXT CONTROLS (TWEAK THESE!) 🔧
+        // ==========================================
+        const STREAK_COLOR = '#39FF14'; // Base neon green color
+        const STREAK_BRIGHTNESS = '60%'; // Lower this to make it darker (was 100%)
+        // ==========================================
+        
+        ctx.filter = `brightness(${STREAK_BRIGHTNESS})`;
+        ctx.fillStyle = STREAK_COLOR; 
         ctx.strokeStyle = '#000000'; // Black outline
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
-        
-        const startX = 190; // Moved further to the right
+
+        const startX = 140; // Moved a little to the left
         const startY = 200; // Lowered further
-        
+
         // Draw "Streak"
         ctx.font = '100px Bangers'; // Made slightly bigger
         ctx.lineWidth = 6;
         ctx.strokeText("Streak", startX, startY);
         ctx.fillText("Streak", startX, startY);
-        
+
         // Draw "X  [number]" below, significantly bigger
         const numberText = `X  ${currentStreak}`; // Added spaces
         const lineSpacing = 100; // Adjusted space between lines for smaller top word
-        
+
         ctx.font = '180px Bangers';
         ctx.lineWidth = 10; // Thicker outline for larger text
         ctx.strokeText(numberText, startX, startY + lineSpacing);
         ctx.fillText(numberText, startX, startY + lineSpacing);
+        
+        // Reset filter so we don't accidentally darken the animated sprites next
+        ctx.filter = 'none';
     }
+
+        // Draw the fairy sprite above Rezzy's head if playing
+        if (isPlayingFairy && fairySpriteImage.complete && fairySpriteImage.width > 0) {
+            const fScale = (GAME_HEIGHT * 0.40) / FAIRY_SPRITE_HEIGHT;
+            const fScaledWidth = FAIRY_SPRITE_WIDTH * fScale;
+            const fScaledHeight = FAIRY_SPRITE_HEIGHT * fScale;
+
+            const fCol = currentFairyFrame % FAIRY_SPRITE_COLS;
+            const fRow = Math.floor(currentFairyFrame / FAIRY_SPRITE_COLS);
+
+            const fx = slotPositions[0] - fScaledWidth / 2;
+            const fy = characterY - (GAME_HEIGHT * 0.70) / 2 - fScaledHeight + fairySpriteOffsetY;
+
+            ctx.drawImage(
+                fairySpriteImage,
+                fCol * FAIRY_SPRITE_WIDTH, fRow * FAIRY_SPRITE_HEIGHT,
+                FAIRY_SPRITE_WIDTH, FAIRY_SPRITE_HEIGHT,
+                Math.floor(fx), Math.floor(fy),
+                fScaledWidth, fScaledHeight
+            );
+        }
+
+        // Draw the lightning sprite above Rezzy's head if playing
+        if (isPlayingLightning && lightningSpriteImage.complete && lightningSpriteImage.width > 0) {
+            const lScale = (GAME_HEIGHT * 0.40) / LIGHTNING_SPRITE_HEIGHT; // Scale it to a reasonable size
+            const lScaledWidth = LIGHTNING_SPRITE_WIDTH * lScale;
+            const lScaledHeight = LIGHTNING_SPRITE_HEIGHT * lScale;
+
+            const lCol = currentLightningFrame % LIGHTNING_SPRITE_COLS;
+            const lRow = Math.floor(currentLightningFrame / LIGHTNING_SPRITE_COLS);
+
+            // Position above the item slot
+            const lx = slotPositions[1] - lScaledWidth / 2;
+            const ly = characterY - (GAME_HEIGHT * 0.70) / 2 - lScaledHeight + lightningSpriteOffsetY;
+
+            ctx.drawImage(
+                lightningSpriteImage,
+                lCol * LIGHTNING_SPRITE_WIDTH, lRow * LIGHTNING_SPRITE_HEIGHT,
+                LIGHTNING_SPRITE_WIDTH, LIGHTNING_SPRITE_HEIGHT,
+                Math.floor(lx), Math.floor(ly),
+                lScaledWidth, lScaledHeight
+            );
+        }
+
+        // Draw the boom sprite above Rezzy's head if playing
+        if (isPlayingBoom && boomSpriteImage.complete && boomSpriteImage.width > 0) {
+            const bScale = (GAME_HEIGHT * 0.40) / BOOM_SPRITE_HEIGHT;
+            const bScaledWidth = BOOM_SPRITE_WIDTH * bScale;
+            const bScaledHeight = BOOM_SPRITE_HEIGHT * bScale;
+
+            const bCol = currentBoomFrame % BOOM_SPRITE_COLS;
+            const bRow = Math.floor(currentBoomFrame / BOOM_SPRITE_COLS);
+
+            const bx = slotPositions[2] - bScaledWidth / 2;
+            const by = characterY - (GAME_HEIGHT * 0.70) / 2 - bScaledHeight + boomSpriteOffsetY;
+
+            ctx.drawImage(
+                boomSpriteImage,
+                bCol * BOOM_SPRITE_WIDTH, bRow * BOOM_SPRITE_HEIGHT,
+                BOOM_SPRITE_WIDTH, BOOM_SPRITE_HEIGHT,
+                Math.floor(bx), Math.floor(by),
+                bScaledWidth, bScaledHeight
+            );
+        }
+
+        // Draw the lagoon sprite above Rezzy's head if playing
+        if (isPlayingLagoon && lagoonSpriteImage.complete && lagoonSpriteImage.width > 0) {
+            const mScale = (GAME_HEIGHT * 0.40) / LAGOON_SPRITE_HEIGHT; // Scale it to a reasonable size
+            const mScaledWidth = LAGOON_SPRITE_WIDTH * mScale;
+            const mScaledHeight = LAGOON_SPRITE_HEIGHT * mScale;
+
+            const mCol = currentLagoonFrame % LAGOON_SPRITE_COLS;
+            const mRow = Math.floor(currentLagoonFrame / LAGOON_SPRITE_COLS);
+
+            // Position above the item slot
+            const mx = slotPositions[3] - mScaledWidth / 2;
+            const my = characterY - (GAME_HEIGHT * 0.70) / 2 - mScaledHeight + lagoonSpriteOffsetY;
+
+            ctx.drawImage(
+                lagoonSpriteImage,
+                mCol * LAGOON_SPRITE_WIDTH, mRow * LAGOON_SPRITE_HEIGHT,
+                LAGOON_SPRITE_WIDTH, LAGOON_SPRITE_HEIGHT,
+                Math.floor(mx), Math.floor(my),
+                mScaledWidth, mScaledHeight
+            );
+        }
 
     // Draw Progress Bar at Top Middle
     if (progressBarImage.complete && progressBarImage.width > 0 &&
@@ -688,32 +758,32 @@ function draw() {
         const pbScale = 0.65; // Adjust this scale if needed
         const pbWidth = progressBarImage.width * pbScale;
         const pbHeight = progressBarImage.height * pbScale;
-        
+
         const pbX = (GAME_WIDTH - pbWidth) / 2;
         const pbY = 20; // 20 pixels from the top
-        
+
         // Draw the empty background progress bar
         ctx.drawImage(
             progressBarImage,
             pbX, pbY,
             pbWidth, pbHeight
         );
-        
+
         // The actual green bar in the image starts at x=433 and is 800 pixels wide (out of 1672)
         const greenStartX = 433;
         const greenWidth = 800;
-        
+
         if (currentProgressBarFill > 0) {
             // Calculate how much of the image to reveal to show the correct amount of green
             let revealSourceWidth = greenStartX + (greenWidth * currentProgressBarFill);
-            
+
             // If it's completely full, reveal the whole image to catch the right edge/glow
             if (currentProgressBarFill >= 1.0) {
                 revealSourceWidth = progressBarFilledImage.width;
             }
-            
+
             const revealDestWidth = revealSourceWidth * pbScale;
-            
+
             // Draw the filled progress bar, revealing from left to right
             ctx.drawImage(
                 progressBarFilledImage,
@@ -729,16 +799,76 @@ function draw() {
         ctx.strokeStyle = '#000000'; // Black outline
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        
+
         ctx.font = '150px Bangers';
         ctx.lineWidth = 10;
-        
+
         const vicX = GAME_WIDTH / 2;
         const vicY = 350; // Moved lower, closer to the clients
-        
+
         const vicText = `Level ${currentLevel} Complete`;
         ctx.strokeText(vicText, vicX, vicY);
         ctx.fillText(vicText, vicX, vicY);
+    }
+
+    // Draw Arrows in bottom corners
+    // Draw Arrows in bottom corners
+    if (arrowImage.complete && arrowImage.width > 0) {
+
+        // ==========================================
+        // 🔧 ARROW CONTROLS (TWEAK THESE NUMBERS!) 🔧
+        // ==========================================
+
+        // 1. SIZE: How tall the arrows are (in pixels)
+        // Increase this number to make them bigger, decrease to make them smaller.
+        const ARROW_SIZE = 400;
+
+        // 2. HORIZONTAL SPACING: How close they are to the left/right edges
+        // Positive numbers (e.g., 50) push them IN toward the center.
+        // Negative numbers (e.g., -50) push them OUT past the edge (cropping them).
+        const HORIZONTAL_PADDING = -160;
+
+        // 3. VERTICAL SPACING: How close they are to the bottom edge
+        // Positive numbers (e.g., 50) push them UP from the bottom.
+        // Negative numbers (e.g., -20) push them DOWN off the bottom screen.
+        const VERTICAL_PADDING = -10;
+
+        // 4. BRIGHTNESS: How bright the arrows glow (100% is normal)
+        const ARROW_BRIGHTNESS = '200%';
+
+        // ==========================================
+
+        const arrowScale = ARROW_SIZE / arrowImage.height;
+        const arrowWidth = arrowImage.width * arrowScale;
+        const arrowHeight = arrowImage.height * arrowScale;
+
+        // Apply brightness filter and a subtle white glow
+        ctx.filter = `brightness(${ARROW_BRIGHTNESS}) drop-shadow(0px 0px 10px rgba(255,255,255,0.5))`;
+
+        // Bottom left arrow (flipped horizontally assuming original points right)
+        ctx.save();
+        ctx.translate(HORIZONTAL_PADDING + arrowWidth / 2, GAME_HEIGHT - VERTICAL_PADDING - arrowHeight / 2);
+        ctx.scale(-1, 1);
+        ctx.drawImage(
+            arrowImage,
+            -arrowWidth / 2,
+            -arrowHeight / 2,
+            arrowWidth,
+            arrowHeight
+        );
+        ctx.restore();
+
+        // Bottom right arrow (normal orientation)
+        ctx.drawImage(
+            arrowImage,
+            GAME_WIDTH - HORIZONTAL_PADDING - arrowWidth,
+            GAME_HEIGHT - VERTICAL_PADDING - arrowHeight,
+            arrowWidth,
+            arrowHeight
+        );
+
+        // Reset filter for anything drawn after this
+        ctx.filter = 'none';
     }
 
     // Reset filter
@@ -750,6 +880,7 @@ function gameLoop() {
     draw();
     requestAnimationFrame(gameLoop);
 }
+
 
 spriteImage.onload = () => {
     gameLoop();
