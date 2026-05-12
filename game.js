@@ -443,52 +443,12 @@ function draw() {
     ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
 
-    // ── Draw Rezzy FIRST (lowest priority — behind customers and counter) ──────
-    const activeImage = isGrabbing ? grabImage : spriteImage;
-    const activeFrame = isGrabbing ? currentGrabFrame : currentFrame;
-    const activeCols = isGrabbing ? GRAB_COLS : COLS;
-
-    if (activeImage.complete && activeImage.width > 0) {
-        // Use the exact (float) frame height for the active animation.
-        // Idle and Grab sheets have different heights (1954/11 vs 1598/9) that are
-        // not whole numbers. Using Math.floor caused ~0.636px error per row that
-        // accumulated to ~7px source drift by row 10, producing ~30px visible bounce.
-        const activeFrameH = isGrabbing ? GRAB_FRAME_HEIGHT : FRAME_HEIGHT;
-
-        const scale = (GAME_HEIGHT * 0.70) / activeFrameH;
-        const scaledWidth = FRAME_WIDTH * scale;
-        const scaledHeight = activeFrameH * scale; // = GAME_HEIGHT * 0.70 always
-
-        // Calculate the position of the current frame on the sprite sheet
-        const col = activeFrame % activeCols;
-        const row = Math.floor(activeFrame / activeCols);
-
-        // Apply offsets if currently grabbing, else 0
-        const currentOffsetX = isGrabbing ? grabOffsetX : 0;
-        const currentOffsetY = isGrabbing ? grabOffsetY : 0;
-
-        // Draw just the current frame, properly scaled.
-        // Source Y uses exact float activeFrameH so row positions never drift.
-        ctx.drawImage(
-            activeImage,
-            col * FRAME_WIDTH, row * activeFrameH, // Source x, y (exact float — no drift)
-            FRAME_WIDTH, activeFrameH,             // Source width, height
-            Math.floor(characterX - scaledWidth / 2 + currentOffsetX),
-            Math.floor(characterY - scaledHeight / 2 + currentOffsetY),
-            scaledWidth,
-            scaledHeight
-        );
-    }
-
-    // ── Draw customers AFTER Rezzy so the cat layer is always in front ────────
+    // ── Draw customers FIRST (behind Rezzy) ────────────────────────────────────
     if (customersImage.complete && customersImage.width > 0) {
         const custScale = (GAME_HEIGHT * 1.0) / FRAME_HEIGHT;
         const scaledWidth = FRAME_WIDTH * custScale;
         const scaledHeight = FRAME_HEIGHT * custScale;
 
-        // Animate customers with the same currentFrame as Rezzy's idle.
-        // The exact float FRAME_HEIGHT (177.636...) ensures row * FRAME_HEIGHT is precise,
-        // so cycling all 52 frames causes zero vertical drift.
         const col = currentFrame % COLS;
         const row = Math.floor(currentFrame / COLS);
 
@@ -507,22 +467,16 @@ function draw() {
 
         // Draw active thought bubbles
         if (!isVictoryState && thoughtBubbleImage.complete && thoughtBubbleImage.width > 0) {
-            // Manually tuned horizontal offsets for each specific customer: Witch, Knight, Elf, Dwarf, Lizardman
             const customerOffsets = [0.35, 0.47, 0.58, 0.70, 0.82];
-
-            // Map item indices to images
             const itemImages = [fairyImage, lightningImage, boomImage, lagoonImage];
 
             activeOrders.forEach((order, index) => {
                 const offset = customerOffsets[order.customerIndex];
                 const charX = (custX - scaledWidth / 2) + (scaledWidth * offset);
 
-                // Set scale for the thought bubble
                 const bubbleScale = (GAME_HEIGHT * 0.22) / thoughtBubbleImage.height;
                 const bubbleWidth = thoughtBubbleImage.width * bubbleScale;
                 const bubbleHeight = thoughtBubbleImage.height * bubbleScale;
-
-                // Position above the head
                 const bubbleY = custY - 220;
 
                 ctx.drawImage(
@@ -533,43 +487,60 @@ function draw() {
                     bubbleHeight
                 );
 
-                // Draw the specific drink inside the thought bubble
                 const orderImage = itemImages[order.itemIndex];
                 if (orderImage && orderImage.complete && orderImage.width > 0) {
-                    // Scale the drink to fit inside the bubble
                     const drinkScale = (bubbleHeight * 0.5) / orderImage.height;
                     const drinkWidth = orderImage.width * drinkScale;
                     const drinkHeight = orderImage.height * drinkScale;
-
                     const destX = charX - drinkWidth / 2;
                     const destY = (bubbleY - bubbleHeight / 2) + (bubbleHeight * 0.38) - (drinkHeight / 2);
-
                     const revealProgress = order.revealProgress;
 
                     if (revealProgress < 1.0) {
-                        // 1. Draw black silhouette
                         ctx.filter = 'brightness(0)';
                         ctx.drawImage(orderImage, Math.floor(destX), Math.floor(destY), drinkWidth, drinkHeight);
                         ctx.filter = 'none';
-
-                        // 2. Draw revealed colored portion (bottom to top)
                         if (revealProgress > 0) {
                             const sourceRevealH = orderImage.height * revealProgress;
                             const destRevealH = drinkHeight * revealProgress;
-
                             ctx.drawImage(
                                 orderImage,
-                                0, orderImage.height - sourceRevealH, orderImage.width, sourceRevealH, // Source
-                                Math.floor(destX), Math.floor(destY + drinkHeight - destRevealH), drinkWidth, destRevealH      // Dest
+                                0, orderImage.height - sourceRevealH, orderImage.width, sourceRevealH,
+                                Math.floor(destX), Math.floor(destY + drinkHeight - destRevealH), drinkWidth, destRevealH
                             );
                         }
                     } else {
-                        // Fully revealed
                         ctx.drawImage(orderImage, Math.floor(destX), Math.floor(destY), drinkWidth, drinkHeight);
                     }
                 }
             });
         }
+    }
+
+    // ── Draw Rezzy SECOND (in front of customers) ──────────────────────────────
+    const activeImage = isGrabbing ? grabImage : spriteImage;
+    const activeFrame = isGrabbing ? currentGrabFrame : currentFrame;
+    const activeCols = isGrabbing ? GRAB_COLS : COLS;
+
+    if (activeImage.complete && activeImage.width > 0) {
+        const activeFrameH = isGrabbing ? GRAB_FRAME_HEIGHT : FRAME_HEIGHT;
+        const scale = (GAME_HEIGHT * 0.70) / activeFrameH;
+        const scaledWidth = FRAME_WIDTH * scale;
+        const scaledHeight = activeFrameH * scale;
+        const col = activeFrame % activeCols;
+        const row = Math.floor(activeFrame / activeCols);
+        const currentOffsetX = isGrabbing ? grabOffsetX : 0;
+        const currentOffsetY = isGrabbing ? grabOffsetY : 0;
+
+        ctx.drawImage(
+            activeImage,
+            col * FRAME_WIDTH, row * activeFrameH,
+            FRAME_WIDTH, activeFrameH,
+            Math.floor(characterX - scaledWidth / 2 + currentOffsetX),
+            Math.floor(characterY - scaledHeight / 2 + currentOffsetY),
+            scaledWidth,
+            scaledHeight
+        );
     }
 
 
