@@ -25,9 +25,6 @@ fairyImage.src = 'Items/FairyInBottle.png';
 const thoughtBubbleImage = new Image();
 thoughtBubbleImage.src = 'Items/thoughtbubble.png';
 
-const customersImage = new Image();
-customersImage.src = 'Customers/customers.png';
-
 const fairySpriteImage = new Image();
 fairySpriteImage.src = 'Items/FairyInBottleSprite.png';
 
@@ -443,78 +440,56 @@ function draw() {
     ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
 
-    // ── Draw customers FIRST (behind Rezzy) ────────────────────────────────────
-    if (customersImage.complete && customersImage.width > 0) {
-        const custScale = (GAME_HEIGHT * 1.0) / FRAME_HEIGHT;
-        const scaledWidth = FRAME_WIDTH * custScale;
-        const scaledHeight = FRAME_HEIGHT * custScale;
+    // ── Draw thought bubbles FIRST (behind Rezzy) ──────────────────────────────
+    // Draw active thought bubbles
+    if (!isVictoryState && thoughtBubbleImage.complete && thoughtBubbleImage.width > 0) {
+        const customerOffsets = [0.35, 0.47, 0.58, 0.70, 0.82];
+        const itemImages = [fairyImage, lightningImage, boomImage, lagoonImage];
 
-        const col = currentFrame % COLS;
-        const row = Math.floor(currentFrame / COLS);
+        activeOrders.forEach((order, index) => {
+            const offset = customerOffsets[order.customerIndex];
+            const charX = GAME_WIDTH * offset;
 
-        const custX = GAME_WIDTH / 2;
-        const custY = GAME_HEIGHT * 0.515;
+            const bubbleScale = (GAME_HEIGHT * 0.22) / thoughtBubbleImage.height;
+            const bubbleWidth = thoughtBubbleImage.width * bubbleScale;
+            const bubbleHeight = thoughtBubbleImage.height * bubbleScale;
+            const bubbleY = (GAME_HEIGHT * 0.515) - 220;
 
-        ctx.drawImage(
-            customersImage,
-            col * FRAME_WIDTH, row * FRAME_HEIGHT,
-            FRAME_WIDTH, FRAME_HEIGHT,
-            Math.floor(custX - scaledWidth / 2),
-            Math.floor(custY - scaledHeight / 2),
-            scaledWidth,
-            scaledHeight
-        );
+            ctx.drawImage(
+                thoughtBubbleImage,
+                Math.floor(charX - bubbleWidth / 2),
+                Math.floor(bubbleY - bubbleHeight / 2),
+                bubbleWidth,
+                bubbleHeight
+            );
 
-        // Draw active thought bubbles
-        if (!isVictoryState && thoughtBubbleImage.complete && thoughtBubbleImage.width > 0) {
-            const customerOffsets = [0.35, 0.47, 0.58, 0.70, 0.82];
-            const itemImages = [fairyImage, lightningImage, boomImage, lagoonImage];
+            const orderImage = itemImages[order.itemIndex];
+            if (orderImage && orderImage.complete && orderImage.width > 0) {
+                const drinkScale = (bubbleHeight * 0.5) / orderImage.height;
+                const drinkWidth = orderImage.width * drinkScale;
+                const drinkHeight = orderImage.height * drinkScale;
+                const destX = charX - drinkWidth / 2;
+                const destY = (bubbleY - bubbleHeight / 2) + (bubbleHeight * 0.38) - (drinkHeight / 2);
+                const revealProgress = order.revealProgress;
 
-            activeOrders.forEach((order, index) => {
-                const offset = customerOffsets[order.customerIndex];
-                const charX = (custX - scaledWidth / 2) + (scaledWidth * offset);
-
-                const bubbleScale = (GAME_HEIGHT * 0.22) / thoughtBubbleImage.height;
-                const bubbleWidth = thoughtBubbleImage.width * bubbleScale;
-                const bubbleHeight = thoughtBubbleImage.height * bubbleScale;
-                const bubbleY = custY - 220;
-
-                ctx.drawImage(
-                    thoughtBubbleImage,
-                    Math.floor(charX - bubbleWidth / 2),
-                    Math.floor(bubbleY - bubbleHeight / 2),
-                    bubbleWidth,
-                    bubbleHeight
-                );
-
-                const orderImage = itemImages[order.itemIndex];
-                if (orderImage && orderImage.complete && orderImage.width > 0) {
-                    const drinkScale = (bubbleHeight * 0.5) / orderImage.height;
-                    const drinkWidth = orderImage.width * drinkScale;
-                    const drinkHeight = orderImage.height * drinkScale;
-                    const destX = charX - drinkWidth / 2;
-                    const destY = (bubbleY - bubbleHeight / 2) + (bubbleHeight * 0.38) - (drinkHeight / 2);
-                    const revealProgress = order.revealProgress;
-
-                    if (revealProgress < 1.0) {
-                        ctx.filter = 'brightness(0)';
-                        ctx.drawImage(orderImage, Math.floor(destX), Math.floor(destY), drinkWidth, drinkHeight);
-                        ctx.filter = 'none';
-                        if (revealProgress > 0) {
-                            const sourceRevealH = orderImage.height * revealProgress;
-                            const destRevealH = drinkHeight * revealProgress;
-                            ctx.drawImage(
-                                orderImage,
-                                0, orderImage.height - sourceRevealH, orderImage.width, sourceRevealH,
-                                Math.floor(destX), Math.floor(destY + drinkHeight - destRevealH), drinkWidth, destRevealH
-                            );
-                        }
-                    } else {
-                        ctx.drawImage(orderImage, Math.floor(destX), Math.floor(destY), drinkWidth, drinkHeight);
+                if (revealProgress < 1.0) {
+                    ctx.filter = 'brightness(0)';
+                    ctx.drawImage(orderImage, Math.floor(destX), Math.floor(destY), drinkWidth, drinkHeight);
+                    ctx.filter = 'none';
+                    if (revealProgress > 0) {
+                        const sourceRevealH = orderImage.height * revealProgress;
+                        const destRevealH = drinkHeight * revealProgress;
+                        ctx.drawImage(
+                            orderImage,
+                            0, orderImage.height - sourceRevealH, orderImage.width, sourceRevealH,
+                            Math.floor(destX), Math.floor(destY + drinkHeight - destRevealH), drinkWidth, destRevealH
+                        );
                     }
+                } else {
+                    ctx.drawImage(orderImage, Math.floor(destX), Math.floor(destY), drinkWidth, drinkHeight);
                 }
-            });
-        }
+            }
+        });
     }
 
     // ── Draw Rezzy SECOND (in front of customers) ──────────────────────────────
@@ -541,19 +516,6 @@ function draw() {
             scaledWidth,
             scaledHeight
         );
-    }
-
-
-    // ── Draw fg-video on canvas here so it sits ABOVE Rezzy but BELOW UI ──────
-    // This fixes the z-index compositing issue on mobile browsers where <canvas>
-    // and <video> elements don't always stack in the correct CSS z-index order.
-    // On Chrome: WebM alpha is respected by ctx.drawImage — transparent areas show through.
-    // On Safari: fg-video is hidden (no WebM alpha support), so we skip this.
-    if (!isSafariOrIOS) {
-        const fgVid = document.getElementById('fg-video');
-        if (fgVid && fgVid.readyState >= 2) {
-            ctx.drawImage(fgVid, 0, 0, GAME_WIDTH, GAME_HEIGHT);
-        }
     }
 
     // 🔧 STATIC COUNTER BOTTLES CONTROLS 🔧
@@ -884,7 +846,6 @@ function gameLoop() {
 const criticalImages = [
     spriteImage,
     grabImage,
-    customersImage,
     fairyImage,
     lightningImage,
     boomImage,
@@ -895,22 +856,7 @@ const criticalImages = [
     arrowImage,
 ];
 
-// ─── Safari / iOS fix ────────────────────────────────────────────────────────
-// Safari does not support WebM with alpha transparency.
-// The fg-video (NewObjects.webm) has alpha, so on Safari it renders as a solid
-// opaque black layer covering the entire canvas — that's the "black screen" bug.
-// Fix: detect Safari/iOS and simply hide the fg-video on those browsers.
-// The game is fully playable without the counter overlay; it just won't have the
-// animated foreground. Background video (MP4) will still work fine.
-const isSafariOrIOS = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) ||
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-if (isSafariOrIOS) {
-    const fgEl = document.getElementById('fg-video');
-    if (fgEl) fgEl.style.display = 'none';
-    console.log('[Rezzy] Safari/iOS detected — fg-video hidden (no WebM alpha support)');
-}
+// Removed Safari / iOS fix since WebM alpha issue is resolved by removing fg-video
 
 let loadedCount = 0;
 let gameLoopStarted = false;
@@ -933,11 +879,6 @@ function tryStartGame() {
             GRAB_FRAME_HEIGHT = grabImage.naturalHeight / GRAB_ROWS; // 1598/9 = 177.556...
         }
 
-        // Hide HTML fg-video — we draw it directly on the canvas instead,
-        // which fixes z-order compositing issues on mobile browsers.
-        const fgEl = document.getElementById('fg-video');
-        if (fgEl && !isSafariOrIOS) fgEl.style.visibility = 'hidden';
-
         gameLoop();
     }
 }
@@ -955,11 +896,9 @@ criticalImages.forEach(img => {
 // Mobile Safari blocks autoplay. We detect this and show a subtle "Tap to begin"
 // prompt. On desktop this never appears.
 const bgVideo = document.getElementById('bg-video');
-const fgVideo = document.getElementById('fg-video');
 
 // Try to play immediately (works on desktop and Android Chrome)
 bgVideo.play().catch(() => {});
-fgVideo.play().catch(() => {});
 
 setTimeout(() => {
     if (!bgVideo.paused) return; // Already playing - no need for overlay
@@ -986,7 +925,6 @@ setTimeout(() => {
 
     overlay.addEventListener('pointerdown', () => {
         bgVideo.play().catch(() => {});
-        fgVideo.play().catch(() => {});
         overlay.remove();
         hint.remove();
     }, { once: true });
