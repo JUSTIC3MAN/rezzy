@@ -273,6 +273,9 @@ function executeGrabAction() {
                                         
                                         // Generate the first order for the new level
                                         let newItemIndex = Math.floor(Math.random() * 4);
+                                        while (nextCustomerIndex === 2 && newItemIndex === 3) {
+                                            newItemIndex = Math.floor(Math.random() * 4);
+                                        }
                                         activeOrders.push({
                                             customerIndex: nextCustomerIndex,
                                             itemIndex: newItemIndex,
@@ -289,6 +292,9 @@ function executeGrabAction() {
 
                                     // Generate the first order for the new level
                                     let newItemIndex = Math.floor(Math.random() * 4);
+                                    while (nextCustomerIndex === 2 && newItemIndex === 3) {
+                                        newItemIndex = Math.floor(Math.random() * 4);
+                                    }
                                     activeOrders.push({
                                         customerIndex: nextCustomerIndex,
                                         itemIndex: newItemIndex,
