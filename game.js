@@ -1,5 +1,6 @@
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
+const bgVideo = document.getElementById('bg-video');
 
 const bangersFont = new FontFace('Bangers', 'url(font/Bangers/Bangers-Regular.ttf)');
 bangersFont.load().then(function (font) {
@@ -60,6 +61,8 @@ let totalCorrectOrders = 0; // Track total correct orders
 let currentLevel = 1;
 let maxOrdersForLevel = 10; // 10 for level 1, 15 for level 2+
 let isVictoryState = false; // Set to true when level is won
+let isCutscenePlaying = false; // Set to true when cutscene is playing
+let isModalOpen = false; // Set to true when leaderboard or name entry is open
 
 
 // Variables for the fairy bottle position and scale
@@ -180,7 +183,7 @@ const frameDelay = 8; // Adjust for animation speed
 
 function executeGrabAction() {
     if (isGrabbing) return;
-    freezeTimer = 60; // Reduced freeze input to 1 second (60 frames at 60fps) for snappier gameplay
+    freezeTimer = 20; // Reduced freeze input to 1/3 second (20 frames) for snappier gameplay
                 isGrabbing = true;
                 currentGrabFrame = 0; // Start grab animation from beginning
                 grabFrameTimer = 0; // Reset frame timer
@@ -228,20 +231,71 @@ function executeGrabAction() {
 
                             // Pause for 3 seconds then start the next level
                             setTimeout(() => {
-                                currentLevel++;
-                                maxOrdersForLevel = currentLevel === 1 ? 10 : 15;
-                                totalCorrectOrders = 0;
-                                currentProgressBarFill = 0; // Reset visual gauge instantly
-                                isVictoryState = false;
+                                let cutsceneSrc = null;
+                                let nextBgSrc = 'backgroundloop/Level2Background.webm';
+                                
+                                if (currentLevel === 1) {
+                                    cutsceneSrc = 'backgroundloop/Cutscene.webm';
+                                } else if (currentLevel === 2) {
+                                    cutsceneSrc = 'backgroundloop/cutscene2.webm';
+                                } else if (currentLevel === 3) {
+                                    cutsceneSrc = 'backgroundloop/Cutscene3.webm';
+                                }
 
-                                // Generate the first order for the new level
-                                let newItemIndex = Math.floor(Math.random() * 4);
-                                activeOrders.push({
-                                    customerIndex: nextCustomerIndex,
-                                    itemIndex: newItemIndex,
-                                    revealProgress: 0
-                                });
-                                nextCustomerIndex = (nextCustomerIndex + 1) % 5;
+                                if (cutsceneSrc) {
+                                    // Start cutscene
+                                    isCutscenePlaying = true;
+                                    canvas.style.display = 'none';
+                                    const trophyBtn = document.getElementById('trophy-btn');
+                                    if (trophyBtn) trophyBtn.style.display = 'none';
+
+                                    bgVideo.src = cutsceneSrc;
+                                    bgVideo.loop = false;
+                                    bgVideo.load();
+                                    bgVideo.play();
+
+                                    bgVideo.onended = () => {
+                                        bgVideo.src = nextBgSrc;
+                                        bgVideo.loop = true;
+                                        bgVideo.load();
+                                        bgVideo.play();
+                                        
+                                        canvas.style.display = 'block';
+                                        if (trophyBtn) trophyBtn.style.display = 'block';
+                                        
+                                        isCutscenePlaying = false;
+                                        isVictoryState = false;
+                                        
+                                        currentLevel++;
+                                        maxOrdersForLevel = 15;
+                                        totalCorrectOrders = 0;
+                                        currentProgressBarFill = 0; // Reset visual gauge instantly
+                                        
+                                        // Generate the first order for the new level
+                                        let newItemIndex = Math.floor(Math.random() * 4);
+                                        activeOrders.push({
+                                            customerIndex: nextCustomerIndex,
+                                            itemIndex: newItemIndex,
+                                            revealProgress: 0
+                                        });
+                                        nextCustomerIndex = (nextCustomerIndex + 1) % 5;
+                                    };
+                                } else {
+                                    currentLevel++;
+                                    maxOrdersForLevel = 15;
+                                    totalCorrectOrders = 0;
+                                    currentProgressBarFill = 0; // Reset visual gauge instantly
+                                    isVictoryState = false;
+
+                                    // Generate the first order for the new level
+                                    let newItemIndex = Math.floor(Math.random() * 4);
+                                    activeOrders.push({
+                                        customerIndex: nextCustomerIndex,
+                                        itemIndex: newItemIndex,
+                                        revealProgress: 0
+                                    });
+                                    nextCustomerIndex = (nextCustomerIndex + 1) % 5;
+                                }
                             }, 3000);
 
                             // We don't push a new order when in victory state immediately
@@ -264,14 +318,17 @@ function executeGrabAction() {
                         }
                     } else {
                         // Wrong item! Break the streak.
+                        if (currentStreak > 0) {
+                            showNameEntryModal(currentStreak);
+                        }
                         currentStreak = 0;
                     }
                 }
 }
 
 window.addEventListener('keydown', (e) => {
-    // Prevent any input if the player is currently frozen or in victory state
-    if (freezeTimer > 0 || isVictoryState) return;
+    // Prevent any input if the player is currently frozen, in victory state, or a modal is open
+    if (freezeTimer > 0 || isVictoryState || isCutscenePlaying || isModalOpen) return;
 
     // Only allow input if not already moving
     if (characterX === targetX) {
@@ -284,11 +341,13 @@ window.addEventListener('keydown', (e) => {
             if (currentSlot > 0) {
                 currentSlot--;
                 targetX = slotPositions[currentSlot];
+                isGrabbing = false;
             }
         } else if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') {
             if (currentSlot < 3) {
                 currentSlot++;
                 targetX = slotPositions[currentSlot];
+                isGrabbing = false;
             }
         }
     }
@@ -297,7 +356,7 @@ window.addEventListener('keydown', (e) => {
 // Mobile support: listen to pointerdown events (mouse or touch)
 window.addEventListener('pointerdown', (e) => {
     // If the game hasn't started yet, tapping the screen handles start logic, not gameplay
-    if (freezeTimer > 0 || isVictoryState) return;
+    if (freezeTimer > 0 || isVictoryState || isCutscenePlaying || isModalOpen) return;
     
     if (characterX !== targetX) return; // Only allow input if not already moving
 
@@ -320,6 +379,7 @@ window.addEventListener('pointerdown', (e) => {
         if (currentSlot > 0) {
             currentSlot--;
             targetX = slotPositions[currentSlot];
+            isGrabbing = false;
         }
     }
     // Hitbox for Right Arrow (bottom right, roughly right 25%)
@@ -327,6 +387,7 @@ window.addEventListener('pointerdown', (e) => {
         if (currentSlot < 3) {
             currentSlot++;
             targetX = slotPositions[currentSlot];
+            isGrabbing = false;
         }
     }
     // Hitbox for the Green Rotating Portal (center of the screen, middle section)
@@ -895,7 +956,7 @@ criticalImages.forEach(img => {
 // ─── Mobile video unlock ─────────────────────────────────────────────────────
 // Mobile Safari blocks autoplay. We detect this and show a subtle "Tap to begin"
 // prompt. On desktop this never appears.
-const bgVideo = document.getElementById('bg-video');
+// bgVideo is already declared at the top of the file
 
 // Try to play immediately (works on desktop and Android Chrome)
 bgVideo.play().catch(() => {});
@@ -929,3 +990,121 @@ setTimeout(() => {
         hint.remove();
     }, { once: true });
 }, 1200);
+
+// ─── Leaderboard & Modals Logic ──────────────────────────────────────────────
+const trophyBtn = document.getElementById('trophy-btn');
+const nameModal = document.getElementById('name-modal');
+const leaderboardModal = document.getElementById('leaderboard-modal');
+const closeLeaderboardBtn = document.getElementById('close-leaderboard-btn');
+const submitScoreBtn = document.getElementById('submit-score-btn');
+const skipScoreBtn = document.getElementById('skip-score-btn');
+const playerNameInput = document.getElementById('player-name');
+const finalStreakSpan = document.getElementById('final-streak');
+const leaderboardList = document.getElementById('leaderboard-list');
+
+let scoreToSubmit = 0;
+
+function resetGame() {
+    currentLevel = 1;
+    maxOrdersForLevel = 10;
+    totalCorrectOrders = 0;
+    currentProgressBarFill = 0;
+    currentStreak = 0;
+    
+    // Clear active orders
+    activeOrders.length = 0;
+    nextCustomerIndex = 0;
+    
+    // Generate new first order
+    let newItemIndex = Math.floor(Math.random() * 4);
+    activeOrders.push({
+        customerIndex: nextCustomerIndex,
+        itemIndex: newItemIndex,
+        revealProgress: 0
+    });
+    nextCustomerIndex = (nextCustomerIndex + 1) % 5;
+}
+
+function showNameEntryModal(streak) {
+    scoreToSubmit = streak;
+    finalStreakSpan.textContent = streak;
+    nameModal.style.display = 'flex';
+    isModalOpen = true;
+    playerNameInput.value = '';
+    playerNameInput.focus();
+    resetGame();
+}
+
+function showLeaderboardModal() {
+    leaderboardModal.style.display = 'flex';
+    isModalOpen = true;
+    fetchLeaderboard();
+}
+
+function closeModals() {
+    nameModal.style.display = 'none';
+    leaderboardModal.style.display = 'none';
+    isModalOpen = false;
+}
+
+trophyBtn.addEventListener('click', () => {
+    if (!isModalOpen) showLeaderboardModal();
+});
+
+closeLeaderboardBtn.addEventListener('click', closeModals);
+
+skipScoreBtn.addEventListener('click', closeModals);
+
+submitScoreBtn.addEventListener('click', async () => {
+    const name = playerNameInput.value.trim().substring(0, 7);
+    if (!name) {
+        alert('Please enter a name!');
+        return;
+    }
+
+    submitScoreBtn.disabled = true;
+    submitScoreBtn.textContent = 'Submitting...';
+
+    try {
+        const response = await fetch('/api/submit-score', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, score: scoreToSubmit })
+        });
+        
+        if (response.ok) {
+            nameModal.style.display = 'none';
+            showLeaderboardModal();
+        } else {
+            console.error('Failed to submit score');
+        }
+    } catch (e) {
+        console.error(e);
+    } finally {
+        submitScoreBtn.disabled = false;
+        submitScoreBtn.textContent = 'Submit Score';
+    }
+});
+
+async function fetchLeaderboard() {
+    leaderboardList.innerHTML = '<p>Loading scores...</p>';
+    try {
+        const response = await fetch('/api/get-scores');
+        const data = await response.json();
+        
+        if (data.success && data.scores.length > 0) {
+            leaderboardList.innerHTML = '';
+            data.scores.forEach((entry, index) => {
+                const div = document.createElement('div');
+                div.className = 'leaderboard-entry';
+                div.innerHTML = `<span>#${index + 1} ${entry.name}</span><span>${entry.score}</span>`;
+                leaderboardList.appendChild(div);
+            });
+        } else {
+            leaderboardList.innerHTML = '<p>No scores yet! Be the first!</p>';
+        }
+    } catch (e) {
+        console.error(e);
+        leaderboardList.innerHTML = '<p>Error loading scores.</p>';
+    }
+}

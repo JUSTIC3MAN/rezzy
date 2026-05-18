@@ -23,7 +23,35 @@
         </video>
         <!-- Canvas for rendering character and game elements -->
         <canvas id="game-canvas" width="800" height="600"></canvas>
+
+        <!-- Trophy Button -->
+        <div id="trophy-btn" title="Leaderboard">🏆</div>
+
+        <!-- Name Entry Modal (Hidden by default) -->
+        <div id="name-modal" class="modal">
+            <div class="modal-content">
+                <h2>STREAK BROKEN!</h2>
+                <p>You reached a streak of <span id="final-streak">0</span>!</p>
+                <p>Enter your name (max 7 chars):</p>
+                <input type="text" id="player-name" maxlength="7" placeholder="Name">
+                <div class="modal-buttons">
+                    <button id="submit-score-btn">Submit Score</button>
+                    <button id="skip-score-btn">Skip</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leaderboard Modal (Hidden by default) -->
+        <div id="leaderboard-modal" class="modal">
+            <div class="modal-content leaderboard-content">
+                <h2>Top Streaks</h2>
+                <div id="leaderboard-list">
+                    <p>Loading...</p>
+                </div>
+                <button id="close-leaderboard-btn">Close</button>
+            </div>
+        </div>
     </div>
-    <script src="game.js?v=5"></script>
+    <script src="game.js?v=6"></script>
 </body>
 </html>
