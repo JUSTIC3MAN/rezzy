@@ -267,7 +267,7 @@ function executeGrabAction() {
                                         isVictoryState = false;
                                         
                                         currentLevel++;
-                                        maxOrdersForLevel = 15;
+                                        maxOrdersForLevel = currentLevel <= 3 ? 10 : 15;
                                         totalCorrectOrders = 0;
                                         currentProgressBarFill = 0; // Reset visual gauge instantly
                                         
@@ -285,7 +285,7 @@ function executeGrabAction() {
                                     };
                                 } else {
                                     currentLevel++;
-                                    maxOrdersForLevel = 15;
+                                    maxOrdersForLevel = currentLevel <= 3 ? 10 : 15;
                                     totalCorrectOrders = 0;
                                     currentProgressBarFill = 0; // Reset visual gauge instantly
                                     isVictoryState = false;
@@ -1002,6 +1002,7 @@ const trophyBtn = document.getElementById('trophy-btn');
 const nameModal = document.getElementById('name-modal');
 const leaderboardModal = document.getElementById('leaderboard-modal');
 const closeLeaderboardBtn = document.getElementById('close-leaderboard-btn');
+const playAgainBtn = document.getElementById('play-again-btn');
 const submitScoreBtn = document.getElementById('submit-score-btn');
 const skipScoreBtn = document.getElementById('skip-score-btn');
 const playerNameInput = document.getElementById('player-name');
@@ -1016,6 +1017,12 @@ function resetGame() {
     totalCorrectOrders = 0;
     currentProgressBarFill = 0;
     currentStreak = 0;
+    
+    // Reset background video to level 1
+    bgVideo.src = 'backgroundloop/newbackground.webm';
+    bgVideo.loop = true;
+    bgVideo.load();
+    bgVideo.play().catch(() => {});
     
     // Clear active orders
     activeOrders.length = 0;
@@ -1058,6 +1065,11 @@ trophyBtn.addEventListener('click', () => {
 });
 
 closeLeaderboardBtn.addEventListener('click', closeModals);
+
+playAgainBtn.addEventListener('click', () => {
+    closeModals();
+    resetGame();
+});
 
 skipScoreBtn.addEventListener('click', closeModals);
 

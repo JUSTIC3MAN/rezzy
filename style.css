@@ -218,6 +218,6 @@ body, html {
 .leaderboard-entry:nth-child(2) { color: #C0C0C0; }
 .leaderboard-entry:nth-child(3) { color: #CD7F32; }
 
-#close-leaderboard-btn {
+.leaderboard-content .modal-buttons {
     margin-top: 20px;
 }
