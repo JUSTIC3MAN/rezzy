@@ -235,11 +235,11 @@ function executeGrabAction() {
                                 let nextBgSrc = 'backgroundloop/Level2Background.webm';
                                 
                                 if (currentLevel === 1) {
-                                    cutsceneSrc = 'backgroundloop/Cutscene.webm';
+                                    cutsceneSrc = 'backgroundloop/cutscene1.webm';
                                 } else if (currentLevel === 2) {
                                     cutsceneSrc = 'backgroundloop/cutscene2.webm';
                                 } else if (currentLevel === 3) {
-                                    cutsceneSrc = 'backgroundloop/Cutscene3.webm';
+                                    cutsceneSrc = 'backgroundloop/cutscene3.webm';
                                 }
 
                                 if (cutsceneSrc) {
