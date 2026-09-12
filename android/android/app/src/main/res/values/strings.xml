@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <!-- Shown under the launcher icon and in the app switcher. The Play Store
+         listing title is set separately in Play Console and can differ. -->
+    <string name="app_name">RezMe</string>
+    <string name="title_activity_main">RezMe</string>
+
+    <!-- Internal identifiers. These must stay matched to the applicationId in
+         android/app/build.gradle. -->
+    <string name="package_name">com.rezme.game</string>
+    <string name="custom_url_scheme">com.rezme.game</string>
+</resources>
