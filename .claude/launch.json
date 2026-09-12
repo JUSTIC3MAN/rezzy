@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "rezzy-static",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [".claude/serve-static.js"],
+      "port": 4321
+    }
+  ]
+}
