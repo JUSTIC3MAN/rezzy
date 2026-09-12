@@ -2,11 +2,28 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#000000">
+    <meta name="description" content="Rezzy — serve the right potion, keep the streak alive.">
     <title>Rezzy</title>
-    <link rel="stylesheet" href="style.css?v=9">
+
+    <!-- The game loop won't start until every one of these has decoded, so kick
+         them off during HTML parse rather than waiting for game.js to run. -->
+    <link rel="preload" as="image" href="RezzySpriteSheet/Idle_Rezzy.png">
+    <link rel="preload" as="image" href="RezzySpriteSheet/Grab_Rezzy.png">
+    <link rel="preload" as="image" href="Items/FairyInBottle.png">
+    <link rel="preload" as="image" href="Items/BlueLightning.png">
+    <link rel="preload" as="image" href="Items/RedWhiteBoom.png">
+    <link rel="preload" as="image" href="Items/MermaidLagoon.png">
+    <link rel="preload" as="image" href="Items/thoughtbubble.png">
+    <link rel="preload" as="image" href="Items/progressbar.png">
+    <link rel="preload" as="image" href="Items/progressbarfilled.png">
+    <link rel="preload" as="image" href="Items/arrow.png">
+    <link rel="preload" as="font" type="font/ttf" href="font/Bangers/Bangers-Regular.ttf" crossorigin>
+
+    <link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
     <!-- Shown on mobile portrait orientation -->
@@ -17,44 +34,48 @@
 
     <div id="game-container">
         <!-- Background video loop -->
-        <video id="bg-video" autoplay loop muted playsinline>
+        <video id="bg-video" autoplay loop muted playsinline preload="auto">
             <source src="backgroundloop/newbackground.webm" type="video/webm">
             Your browser does not support the video tag.
         </video>
-        <!-- Canvas for rendering character and game elements -->
-        <canvas id="game-canvas" width="800" height="600"></canvas>
+        <!-- Canvas for rendering character and game elements.
+             Backing store is sized by game.js to match the device. -->
+        <canvas id="game-canvas"></canvas>
 
         <!-- Trophy Button -->
-        <div id="trophy-btn" title="Leaderboard">🏆</div>
+        <div id="trophy-btn" role="button" tabindex="0" title="Leaderboard" aria-label="Open leaderboard">🏆</div>
 
         <!-- Name Entry Modal (Hidden by default) -->
-        <div id="name-modal" class="modal">
+        <div id="name-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="name-modal-title">
             <div class="modal-content">
-                <h2>STREAK BROKEN!</h2>
+                <h2 id="name-modal-title">STREAK BROKEN!</h2>
                 <p>You reached a streak of <span id="final-streak">0</span>!</p>
                 <p>Enter your name (max 7 chars):</p>
-                <input type="text" id="player-name" maxlength="7" placeholder="Name">
+                <input type="text" id="player-name" maxlength="7" placeholder="Name"
+                       autocomplete="off" autocapitalize="characters" spellcheck="false"
+                       aria-label="Player name">
                 <div class="modal-buttons">
-                    <button id="submit-score-btn">Submit Score</button>
-                    <button id="skip-score-btn">Skip</button>
+                    <button id="submit-score-btn" type="button">Submit Score</button>
+                    <button id="skip-score-btn" type="button">Skip</button>
                 </div>
+                <p id="submit-status" class="modal-status" role="status" aria-live="polite" hidden></p>
             </div>
         </div>
 
         <!-- Leaderboard Modal (Hidden by default) -->
-        <div id="leaderboard-modal" class="modal">
+        <div id="leaderboard-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="leaderboard-title">
             <div class="modal-content leaderboard-content">
-                <h2>Top Streaks</h2>
-                <div id="leaderboard-list">
+                <h2 id="leaderboard-title">Top Streaks</h2>
+                <div id="leaderboard-list" aria-live="polite">
                     <p>Loading...</p>
                 </div>
                 <div class="modal-buttons">
-                    <button id="close-leaderboard-btn">Close</button>
-                    <button id="play-again-btn">Play Again</button>
+                    <button id="close-leaderboard-btn" type="button">Close</button>
+                    <button id="play-again-btn" type="button">Play Again</button>
                 </div>
             </div>
         </div>
     </div>
-    <script src="game.js?v=7"></script>
+    <script src="game.js?v=10"></script>
 </body>
 </html>

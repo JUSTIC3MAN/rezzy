@@ -8,6 +8,11 @@ body, html {
     display: flex;
     justify-content: center;
     align-items: center;
+    /* Kill mobile double-tap zoom, rubber-band scroll and tap flashes — all of
+       which fire during normal play and interfere with the pointer handlers. */
+    touch-action: none;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 /* Portrait orientation warning overlay */
@@ -45,6 +50,11 @@ body, html {
     0% { transform: rotate(0deg); }
     50% { transform: rotate(-90deg); }
     100% { transform: rotate(0deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #rotate-notice .rotate-icon { animation: none; }
+    #trophy-btn, .modal-content button { transition: none; }
 }
 
 /* Show the rotate notice in portrait mode on mobile */
@@ -93,6 +103,32 @@ body, html {
     width: 100%;
     height: 100%;
     z-index: 2;
+    pointer-events: none;
+}
+
+/* Autoplay unlock prompt — created by game.js when the video stays paused. */
+#tap-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    background: transparent;
+    cursor: pointer;
+}
+
+#tap-hint {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    padding: 12px 24px;
+    border-radius: 30px;
+    background: rgba(0, 0, 0, 0.5);
+    color: rgba(255, 255, 255, 0.85);
+    font-family: sans-serif;
+    font-size: 22px;
+    text-align: center;
+    text-shadow: 0 0 10px #000;
     pointer-events: none;
 }
 
@@ -166,6 +202,23 @@ body, html {
     text-transform: uppercase;
 }
 
+/* Submission feedback. Hidden until there is something to say, so the
+   modal keeps its normal height on the happy path. */
+.modal-status {
+    font-size: 20px;
+    margin: 12px 0 0;
+    letter-spacing: 1px;
+}
+
+.modal-status[hidden] {
+    display: none;
+}
+
+.modal-status.error {
+    color: #FF4136;
+    text-shadow: 1px 1px 0 #000;
+}
+
 .modal-buttons {
     display: flex;
     justify-content: center;
@@ -220,4 +273,23 @@ body, html {
 
 .leaderboard-content .modal-buttons {
     margin-top: 20px;
+}
+
+/* Landscape phones are short — the leaderboard was taller than the viewport and
+   its buttons ended up off-screen. Scale the whole modal down to fit. */
+@media (max-height: 500px) {
+    .modal-content {
+        padding: 16px 24px;
+        min-width: 260px;
+        max-width: 90vw;
+        max-height: 92vh;
+        overflow-y: auto;
+    }
+    .leaderboard-content { min-width: 320px; }
+    .modal-content h2 { font-size: 30px; }
+    .modal-content p { font-size: 17px; margin: 8px 0; }
+    .modal-content input { font-size: 24px; margin: 10px 0; padding: 6px; }
+    .modal-content button { font-size: 18px; padding: 7px 14px; }
+    #leaderboard-list { font-size: 20px; margin: 10px 0; max-height: 38vh; }
+    .leaderboard-entry { padding: 5px 8px; }
 }
