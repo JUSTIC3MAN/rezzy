@@ -1,0 +1,18 @@
+{
+  "name": "rezzy-ios",
+  "version": "1.0.0",
+  "description": "Rezzy packaged as a native iOS app with Capacitor",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync": "node sync-web-assets.mjs"
+  },
+  "dependencies": {
+    "@capacitor/cli": "^7.6.9",
+    "@capacitor/core": "^7.6.9",
+    "@capacitor/ios": "^7.6.9"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

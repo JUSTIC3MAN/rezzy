@@ -1,0 +1,183 @@
+# ════════════════════════════════════════════════════════════════════════════
+#  Build RezMe for iOS on a cloud Mac.
+#
+#  Xcode only runs on macOS, and there is no Mac in this project. This hands
+#  the compile to a rented one for the length of the build. Codemagic's free
+#  tier covers 500 macOS minutes a month; a build here takes about five.
+#
+#  Two workflows:
+#
+#    ios-unsigned   The one to start with. Produces an .ipa with no signature.
+#                   Sideloadly on Windows signs it with your own free Apple ID
+#                   and installs it over the cable. No Apple Developer Program,
+#                   no $99 — the app just expires after 7 days and Sideloadly
+#                   re-signs it before it does.
+#
+#    ios-release    For the App Store, once you have the $99 membership. Needs
+#                   an App Store Connect API key added to Codemagic first, in
+#                   Teams → Integrations. Until then it will fail, and that is
+#                   expected.
+#
+#  Setup: push this project to a Git repo, connect it at codemagic.io, and pick
+#  the workflow. Full walkthrough in README.md.
+# ════════════════════════════════════════════════════════════════════════════
+
+definitions:
+  env_versions: &env_versions
+    xcode: latest
+    cocoapods: default
+    node: 22
+
+workflows:
+
+  # ── Unsigned build, for sideloading ──────────────────────────────────────
+  ios-unsigned:
+    name: RezMe iOS (unsigned, for Sideloadly)
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+    environment:
+      <<: *env_versions
+    scripts:
+      - name: Install Capacitor
+        script: |
+          cd ios
+          npm ci
+
+      # The transcode to H.264 needs ffmpeg. Codemagic's image does not promise
+      # it, and without it sync-web-assets.mjs falls back to shipping the WebM
+      # files — which is exactly the thing this build exists to avoid.
+      - name: Ensure ffmpeg
+        script: |
+          which ffmpeg || brew install ffmpeg
+
+      - name: Sync the game from the web project
+        script: |
+          cd ios
+          node sync-web-assets.mjs
+
+      # cap sync regenerates the Cordova plugin scaffolding, which is not in the
+      # repo, and installs the pods.
+      - name: Sync native project and install pods
+        script: |
+          cd ios
+          npx cap sync ios
+          cd ios/App
+          pod install
+
+      # CODE_SIGNING_ALLOWED=NO is what makes this work without any Apple
+      # credentials. The output is a real, complete app bundle that simply
+      # carries no signature; Sideloadly adds one at install time.
+      - name: Build unsigned
+        script: |
+          cd ios/ios/App
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      # An .ipa is a zip with the .app inside a folder called Payload. That is
+      # the whole format; there is nothing else to it.
+      - name: Package the .ipa
+        script: |
+          cd ios/ios/App/build/Build/Products/Release-iphoneos
+          mkdir -p Payload
+          cp -R App.app Payload/
+          zip -qr RezMe-unsigned.ipa Payload
+          mv RezMe-unsigned.ipa $CM_BUILD_DIR/
+
+    artifacts:
+      - RezMe-unsigned.ipa
+
+    publishing:
+      email:
+        recipients:
+          - justicemanhero@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  # ── Signed build, for TestFlight and the App Store ───────────────────────
+  ios-release:
+    name: RezMe iOS (signed, App Store)
+    max_build_duration: 45
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: RezMe App Store Key
+    environment:
+      <<: *env_versions
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.rezme.game
+      vars:
+        BUNDLE_ID: com.rezme.game
+        APP_STORE_APPLE_ID: 0000000000        # replace once the app exists in App Store Connect
+    scripts:
+      - name: Install Capacitor
+        script: |
+          cd ios
+          npm ci
+
+      # The transcode to H.264 needs ffmpeg. Codemagic's image does not promise
+      # it, and without it sync-web-assets.mjs falls back to shipping the WebM
+      # files — which is exactly the thing this build exists to avoid.
+      - name: Ensure ffmpeg
+        script: |
+          which ffmpeg || brew install ffmpeg
+
+      - name: Sync the game from the web project
+        script: |
+          cd ios
+          node sync-web-assets.mjs
+
+      # cap sync regenerates the Cordova plugin scaffolding, which is not in the
+      # repo, and installs the pods.
+      - name: Sync native project and install pods
+        script: |
+          cd ios
+          npx cap sync ios
+          cd ios/App
+          pod install
+
+      # Every upload needs a build number App Store Connect has not seen before.
+      # This uses Codemagic's own counter, so it never collides.
+      - name: Set the build number
+        script: |
+          cd ios/ios/App
+          agvtool new-version -all $(($PROJECT_BUILD_NUMBER + 1))
+
+      - name: Apply the signing certificates
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE --create
+          keychain add-certificates
+          xcode-project use-profiles
+
+      - name: Build
+        script: |
+          cd ios/ios/App
+          xcode-project build-ipa \
+            --workspace App.xcworkspace \
+            --scheme App \
+            --config Release
+
+    artifacts:
+      - ios/ios/App/build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+      email:
+        recipients:
+          - justicemanhero@gmail.com
+        notify:
+          success: true
+          failure: true

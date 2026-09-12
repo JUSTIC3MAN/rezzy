@@ -1,0 +1,20 @@
+# ── Overrides for this folder ───────────────────────────────────────────────
+# Codemagic clones the repo onto a cloud Mac and runs `npm ci` there, which
+# needs both files present. The root .gitignore no longer excludes them, so
+# these two lines are belt-and-braces: they keep the iOS build working even if
+# the root ever goes back to ignoring package manifests.
+!package.json
+!package-lock.json
+
+# ── Generated ───────────────────────────────────────────────────────────────
+node_modules/
+
+# Rebuilt from the web project by sync-web-assets.mjs.
+www/
+
+# Transcoded background videos. Re-derived from backgroundloop/*.webm, and
+# large enough that committing them would bloat the repo for no gain.
+.video-cache/
+
+# ── macOS ───────────────────────────────────────────────────────────────────
+.DS_Store
