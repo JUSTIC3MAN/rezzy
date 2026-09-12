@@ -1,7 +1,5 @@
 # Development dependencies and scripts
 node_modules/
-package.json
-package-lock.json
 
 # Scratch and analysis scripts
 scratch/
@@ -12,9 +10,26 @@ grid_detect2.js
 grid_detect3.js
 grid_detect4.js
 
+# Archived/unused files (kept locally, not deployed)
+waste/
+
 # OS generated files
 .DS_Store
 Thumbs.db
 
 .vercel
-.env*.local
+
+# Environment files. 'vercel env pull' writes the real REDIS_URL (password and all)
+# into .env.production, so none of these may ever be committed.
+.env
+.env.*
+
+# Debug screenshots and scratch output from assistant sessions
+Claude outputs/
+*.bak
+
+# Packaged builds are produced by Android Studio / Xcode, not stored here
+*.zip
+*.apk
+*.aab
+*.ipa

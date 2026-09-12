@@ -1,0 +1,12 @@
+waste/
+scratch/
+*.md
+.env
+.env.*
+.claude/
+
+# Native app projects. Both are separate builds of the same game and none of it
+# is served from the web — without these lines a deploy uploads ~170 MB of
+# Xcode project, Gradle project and node_modules along with the site.
+android/
+ios/
