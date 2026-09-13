@@ -1,0 +1,103 @@
+# Build a debug APK of RezMe on GitHub's runners.
+#
+# Why this exists: compiling the app needs the Android SDK and Gradle, which is
+# a multi-gigabyte install. GitHub's Ubuntu runners already have both. This
+# builds the APK there, so you never have to install Android Studio.
+#
+# To run it:  Actions tab  ->  "Build Android debug APK"  ->  Run workflow.
+#
+# When it finishes, the APK is published as a release you can download straight
+# onto a phone, no login needed:
+#
+#   https://github.com/JUSTIC3MAN/rezzy/releases/download/android-debug/app-debug.apk
+#
+# That link always points at the newest build. (The Actions "artifact" is also
+# attached to the run, but artifacts are zipped and need a GitHub login, which
+# is awkward on a phone — hence the release.)
+#
+# The APK is debug-signed. That is fine for installing on your own phone. It
+# cannot go to the Play Store: that needs a release build signed with your own
+# keystore, described in android/README.md.
+
+name: Build Android debug APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'game.js'
+      - 'style.css'
+      - 'Items/**'
+      - 'RezzySpriteSheet/**'
+      - 'backgroundloop/**'
+      - 'font/**'
+      - 'android/**'
+      - '.github/workflows/android-debug.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    # Needed to publish the release below.
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # AGP 8.7.2 needs JDK 17 or newer.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: android/package-lock.json
+
+      - name: Install the Capacitor CLI
+        working-directory: android
+        run: npm ci
+
+      # Copies the web game into android/www and patches in the API base.
+      - name: Copy the game into the app
+        working-directory: android
+        run: node sync-web-assets.mjs
+
+      # Generates capacitor.config.json, capacitor.plugins.json and
+      # res/xml/config.xml, which are deliberately not committed, and mirrors
+      # www into the native assets folder.
+      - name: Generate the native config
+        working-directory: android
+        run: npx cap sync android
+
+      - name: Build the debug APK
+        working-directory: android/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Attach the APK to this run
+        uses: actions/upload-artifact@v4
+        with:
+          name: RezMe-debug-apk
+          path: android/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      # A release asset has a plain public download URL — no login, no zip — so
+      # it can be opened and installed directly from a phone's browser. The tag
+      # is replaced each build so the link above never changes.
+      - name: Publish the APK as a downloadable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete android-debug --yes --cleanup-tag || true
+          gh release create android-debug \
+            android/android/app/build/outputs/apk/debug/app-debug.apk \
+            --title "RezMe debug APK (latest build)" \
+            --notes "Debug-signed build for installing on your own phone. Built from ${GITHUB_SHA}." \
+            --prerelease
